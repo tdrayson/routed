@@ -54,12 +54,6 @@ button {
   color: inherit;
 }
 
-/* Remove text decoration on links */
-a {
-  text-decoration: none;
-  color: inherit;
-}
-
 /* Improve media defaults */
 img,
 picture,
@@ -132,12 +126,17 @@ body {
   width: 100%;
 }
 
+.footer {
+  font-size: 0.8rem;
+}
+
 h1 {
   font-size: 1.5rem;
   margin: 0;
 }
 
-h2 {
+h2,
+summary {
   font-weight: 600;
   font-size: 1.2rem;
 }
@@ -159,6 +158,13 @@ h2 {
   padding: var(--spacing-lg);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-md);
+}
+
+.card-content {
+  margin-top: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
 }
 
 #controls {

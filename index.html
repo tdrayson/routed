@@ -4,15 +4,36 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Route Generator</title>
-    <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicon/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon/favicon-16x16.png">
-    <link rel="manifest" href="/assets/favicon/site.webmanifest">
-    <link rel="mask-icon" href="/assets/favicon/safari-pinned-tab.svg" color="#9ccf6a">
-    <link rel="shortcut icon" href="/assets/favicon/favicon.ico">
-    <meta name="msapplication-TileColor" content="#9ccf6a">
-    <meta name="msapplication-config" content="/assets/favicon/browserconfig.xml">
-    <meta name="theme-color" content="#ffffff">
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/favicon/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/favicon/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/favicon/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/assets/favicon/site.webmanifest" />
+    <link
+      rel="mask-icon"
+      href="/assets/favicon/safari-pinned-tab.svg"
+      color="#9ccf6a"
+    />
+    <link rel="shortcut icon" href="/assets/favicon/favicon.ico" />
+    <meta name="msapplication-TileColor" content="#9ccf6a" />
+    <meta
+      name="msapplication-config"
+      content="/assets/favicon/browserconfig.xml"
+    />
+    <meta name="theme-color" content="#ffffff" />
     <script src="https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.js"></script>
     <link
       href="https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.css"
@@ -25,129 +46,146 @@
       <h1 class="visually-hidden">Route Generator</h1>
       <div id="map" role="region" aria-label="Interactive map"></div>
       <div class="floating-panel">
-        <div id="controls" class="card" role="form" aria-label="Route options">
-          <h2>Generate a route</h2>
-          <div class="form-group">
-            <label for="start-location">Start Location</label>
-            <div class="autocomplete-input">
-              <div class="autocomplete-container">
-                <input
-                  type="text"
-                  id="start-location"
-                  class="form-control"
-                  placeholder="Enter start location"
-                />
+        <details id="controls" class="card" open="true">
+          <summary>Route Settings</summary>
+          <div class="card-content" role="form" aria-label="Route options">
+            <div class="form-group">
+              <label for="start-location">Start Location</label>
+              <div class="autocomplete-input">
+                <div class="autocomplete-container">
+                  <input
+                    type="text"
+                    id="start-location"
+                    class="form-control"
+                    placeholder="Enter start location"
+                  />
+                  <button
+                    id="start-marker-button"
+                    class="map-marker-button"
+                    title="Set start location on map"
+                  >
+                    <img src="assets/marker.svg" alt="Map marker" />
+                  </button>
+                  <div id="start-results" class="autocomplete-results"></div>
+                </div>
                 <button
-                  id="start-marker-button"
-                  class="map-marker-button"
-                  title="Set start location on map"
+                  id="current-location"
+                  class="current-location-button"
+                  onclick="getCurrentLocation()"
+                  aria-label="Use current location"
+                  type="button"
                 >
-                  <img src="assets/marker.svg" alt="Map marker" />
+                  <img src="assets/gps.svg" alt="GPS" />
                 </button>
-                <div id="start-results" class="autocomplete-results"></div>
               </div>
-              <button
-                id="current-location"
-                class="current-location-button"
-                onclick="getCurrentLocation()"
-                aria-label="Use current location"
-                type="button"
-              >
-                <img src="assets/gps.svg" alt="GPS" />
-              </button>
             </div>
-          </div>
 
-          <div class="input-group">
-            <label for="tripType">Trip Type</label>
-            <select id="tripType" aria-describedby="trip-type-description">
-              <option value="round">Round Trip</option>
-              <option value="oneway">One Way</option>
-            </select>
-            <div id="trip-type-description" class="visually-hidden">
-              Choose between a round trip that returns to start or a one-way
-              route
+            <div class="input-group">
+              <label for="tripType">Trip Type</label>
+              <select id="tripType" aria-describedby="trip-type-description">
+                <option value="round">Round Trip</option>
+                <option value="oneway">One Way</option>
+              </select>
+              <div id="trip-type-description" class="visually-hidden">
+                Choose between a round trip that returns to start or a one-way
+                route
+              </div>
             </div>
-          </div>
 
-          <div id="end-location-group" class="form-group" style="display: none">
-            <label for="end-location">End Location</label>
-            <div class="autocomplete-input">
-              <div class="autocomplete-container">
-                <input
-                  type="text"
-                  id="end-location"
-                  class="form-control"
-                  placeholder="Enter end location"
-                />
+            <div
+              id="end-location-group"
+              class="form-group"
+              style="display: none"
+            >
+              <label for="end-location">End Location</label>
+              <div class="autocomplete-input">
+                <div class="autocomplete-container">
+                  <input
+                    type="text"
+                    id="end-location"
+                    class="form-control"
+                    placeholder="Enter end location"
+                  />
+                  <button
+                    id="end-marker-button"
+                    class="map-marker-button"
+                    title="Set end location on map"
+                  >
+                    <img src="assets/marker.svg" alt="Map marker" />
+                  </button>
+                  <div id="end-results" class="autocomplete-results"></div>
+                </div>
                 <button
-                  id="end-marker-button"
-                  class="map-marker-button"
-                  title="Set end location on map"
+                  id="swap-locations"
+                  class="swap-locations-button button-alt"
+                  onclick="swapLocations()"
+                  aria-label="Swap start and end locations"
+                  type="button"
                 >
-                  <img src="assets/marker.svg" alt="Map marker" />
+                  <img src="assets/switch.svg" alt="Swap" />
                 </button>
-                <div id="end-results" class="autocomplete-results"></div>
               </div>
-              <button
-                id="swap-locations"
-                class="swap-locations-button button-alt"
-                onclick="swapLocations()"
-                aria-label="Swap start and end locations"
-                type="button"
+            </div>
+
+            <div class="input-group">
+              <label for="activity">Activity Type</label>
+              <select id="activity" aria-describedby="activity-description">
+                <option value="foot-walking">Walking</option>
+                <option value="foot-hiking">Running</option>
+                <option value="cycling-regular">Cycling</option>
+              </select>
+              <div id="activity-description" class="visually-hidden">
+                Select the type of activity for your route
+              </div>
+            </div>
+
+            <div class="input-group">
+              <label for="duration">Duration (minutes)</label>
+              <input
+                type="number"
+                id="duration"
+                value="30"
+                min="5"
+                max="120"
+                aria-describedby="duration-description"
+              />
+              <div id="duration-description" class="visually-hidden">
+                Enter the desired duration of your route in minutes, between 5
+                and 120
+              </div>
+            </div>
+
+            <button
+              onclick="generateRoute()"
+              id="generate-btn"
+              type="button"
+              aria-label="Generate route"
+            >
+              Generate Route
+            </button>
+            <p class="">
+              Built by
+              <a
+                href="https://taylordrayson.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Taylor Drayson</a
               >
-                <img src="assets/switch.svg" alt="Swap" />
-              </button>
-            </div>
+            </p>
           </div>
-
-          <div class="input-group">
-            <label for="activity">Activity Type</label>
-            <select id="activity" aria-describedby="activity-description">
-              <option value="foot-walking">Walking</option>
-              <option value="foot-hiking">Running</option>
-              <option value="cycling-regular">Cycling</option>
-            </select>
-            <div id="activity-description" class="visually-hidden">
-              Select the type of activity for your route
-            </div>
-          </div>
-
-          <div class="input-group">
-            <label for="duration">Duration (minutes)</label>
-            <input
-              type="number"
-              id="duration"
-              value="30"
-              min="5"
-              max="120"
-              aria-describedby="duration-description"
-            />
-            <div id="duration-description" class="visually-hidden">
-              Enter the desired duration of your route in minutes, between 5 and
-              120
-            </div>
-          </div>
-
-          <button
-            onclick="generateRoute()"
-            id="generate-btn"
-            type="button"
-            aria-label="Generate route"
-          >
-            Generate Route
-          </button>
-        </div>
-        <div
+        </details>
+        <details
           id="route-selection-panel"
           class="route-selection-panel card"
           style="display: none"
           role="region"
           aria-label="Route selection"
         >
-          <h2>Recommended Routes</h2>
-          <div id="route-options"></div>
-        </div>
+          <summary>Recommended Routes</summary>
+          <div class="card-content" role="form" aria-label="Route options">
+            <div id="route-options"></div>
+          </div>
+        </details>
       </div>
       <div id="loading" role="status" aria-live="polite">
         Generating route...
