@@ -34,9 +34,9 @@
       content="/assets/favicon/browserconfig.xml"
     />
     <meta name="theme-color" content="#ffffff" />
-    <script src="https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.js"></script>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
     <link
-      href="https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.css"
+      href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css"
       rel="stylesheet"
     />
     <link href="styles.css" rel="stylesheet" />
@@ -83,12 +83,11 @@
             <div class="input-group">
               <label for="tripType">Trip Type</label>
               <select id="tripType" aria-describedby="trip-type-description">
-                <option value="round">Round Trip</option>
+                <option value="loop">Loop</option>
                 <option value="oneway">One Way</option>
               </select>
               <div id="trip-type-description" class="visually-hidden">
-                Choose between a round trip that returns to start or a one-way
-                route
+                Choose between a loop that returns to start or a one-way route
               </div>
             </div>
 

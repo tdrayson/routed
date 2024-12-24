@@ -1,7 +1,16 @@
 class RouteGenerator {
   constructor() {
     // Debug flag
-    this.debug = true;
+    this.debug = false;
+
+    // Add panel state tracking
+    this.panelStates = {
+      controls: false,
+      routeSelection: false,
+    };
+
+    // Add mobile breakpoint
+    this.MOBILE_BREAKPOINT = 768; // pixels
 
     // Configuration object for all layout and styling values
     this.config = {
@@ -45,8 +54,8 @@ class RouteGenerator {
       offset: [-(this.config.panel.width + this.config.panel.offset) / 2, 0],
     };
 
-    this.ORS_API_KEY =
-      '5b3ce3597851110001cf62487839740366424bf58852b11aadebd3a7';
+    this.MAPBOX_API_KEY =
+      'pk.eyJ1IjoidGRyYXlzb24iLCJhIjoiY201MnFqNDdyMmYxdzJqcXd2djF6d3p1aCJ9.pfeIgg_H8Bd0cLOx4NVU9g';
     this.map = null;
     this.userMarker = null;
     this.destinationMarker = null;
@@ -101,8 +110,8 @@ class RouteGenerator {
       endLocationGroup.style.display =
         e.target.value === 'oneway' ? 'block' : 'none';
 
-      // Clear end location if switching to round trip
-      if (e.target.value === 'round') {
+      // Clear end location if switching to loop
+      if (e.target.value === 'loop') {
         endInput.value = '';
         this.endLocation = null;
         if (this.destinationMarker) {
@@ -123,8 +132,10 @@ class RouteGenerator {
         : '';
 
       if (this.isStartMarkerMode) {
+        this.collapsePanels();
         this.showNotification('Please click on map to set the start location');
       } else {
+        this.restorePanels();
         this.hideNotification();
       }
     });
@@ -139,8 +150,10 @@ class RouteGenerator {
         : '';
 
       if (this.isEndMarkerMode) {
+        this.collapsePanels();
         this.showNotification('Please click on map to set the end location');
       } else {
+        this.restorePanels();
         this.hideNotification();
       }
     });
@@ -198,8 +211,8 @@ class RouteGenerator {
     const endLocationGroup = document.getElementById('end-location-group');
     endLocationGroup.style.display = tripType === 'oneway' ? 'block' : 'none';
 
-    // Clear end location if switching to round trip
-    if (tripType === 'round') {
+    // Clear end location if switching to loop
+    if (tripType === 'loop') {
       const endLocationInput = document.getElementById('end-location');
       endLocationInput.value = '';
       this.endLocation = null;
@@ -222,14 +235,11 @@ class RouteGenerator {
   async searchLocations(query) {
     try {
       const response = await fetch(
-        `https://api.openrouteservice.org/geocode/autocomplete?api_key=${
-          this.ORS_API_KEY
-        }&text=${encodeURIComponent(query)}`,
-        {
-          headers: {
-            Accept: 'application/json',
-          },
-        },
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+          query,
+        )}.json?access_token=${
+          this.MAPBOX_API_KEY
+        }&types=address,place,poi&limit=5`,
       );
 
       if (!response.ok) {
@@ -244,8 +254,7 @@ class RouteGenerator {
     }
   }
 
-  updateAutocompleteResults(results) {
-    const resultsContainer = document.getElementById('autocomplete-results');
+  updateAutocompleteResults(results, resultsContainer, isEnd = false) {
     resultsContainer.innerHTML = '';
 
     results.forEach((result, index) => {
@@ -254,16 +263,25 @@ class RouteGenerator {
       div.setAttribute('role', 'option');
       div.setAttribute(
         'aria-selected',
-        index === this.selectedIndex ? 'true' : 'false',
+        index === (isEnd ? this.endSelectedIndex : this.selectedIndex)
+          ? 'true'
+          : 'false',
       );
-      div.setAttribute('id', `location-option-${index}`);
-      if (index === this.selectedIndex) {
+      div.setAttribute(
+        'id',
+        `${isEnd ? 'end' : 'start'}-location-option-${index}`,
+      );
+      if (index === (isEnd ? this.endSelectedIndex : this.selectedIndex)) {
         div.className += ' selected';
       }
-      div.textContent = result.properties.label;
+      div.textContent = result.place_name;
 
       div.addEventListener('click', () => {
-        this.selectLocation(result);
+        if (isEnd) {
+          this.selectEndLocation(result);
+        } else {
+          this.selectLocation(result);
+        }
       });
 
       resultsContainer.appendChild(div);
@@ -272,12 +290,18 @@ class RouteGenerator {
     resultsContainer.style.display = results.length > 0 ? 'block' : 'none';
 
     // Update ARIA attributes
-    const input = document.getElementById('location');
+    const input = document.getElementById(
+      isEnd ? 'end-location' : 'start-location',
+    );
     if (results.length > 0) {
       input.setAttribute('aria-expanded', 'true');
       input.setAttribute(
         'aria-activedescendant',
-        this.selectedIndex >= 0 ? `location-option-${this.selectedIndex}` : '',
+        (isEnd ? this.endSelectedIndex : this.selectedIndex) >= 0
+          ? `${isEnd ? 'end' : 'start'}-location-option-${
+              isEnd ? this.endSelectedIndex : this.selectedIndex
+            }`
+          : '',
       );
     } else {
       input.setAttribute('aria-expanded', 'false');
@@ -287,34 +311,42 @@ class RouteGenerator {
 
   selectLocation(location) {
     const input = document.getElementById('start-location');
-    input.value = location.properties.label;
+    input.value = location.place_name;
     document.getElementById('start-results').style.display = 'none';
     this.currentLocation = location.geometry.coordinates;
     this.updateUserMarker(this.currentLocation);
   }
 
-  handleAutocomplete() {
-    const input = document.getElementById('start-location');
-    const query = input.value.trim();
-
+  handleAutocomplete(query, resultsContainer, isEnd = false) {
     if (query.length < 3) {
-      document.getElementById('start-results').style.display = 'none';
+      resultsContainer.style.display = 'none';
       return;
     }
 
     clearTimeout(this.debounceTimer);
     this.debounceTimer = setTimeout(async () => {
-      this.autocompleteResults = await this.searchLocations(query);
-      this.selectedIndex = -1;
-      this.updateAutocompleteResults(this.autocompleteResults);
+      const results = await this.searchLocations(query);
+      if (isEnd) {
+        this.endAutocompleteResults = results;
+        this.endSelectedIndex = -1;
+      } else {
+        this.autocompleteResults = results;
+        this.selectedIndex = -1;
+      }
+      this.updateAutocompleteResults(results, resultsContainer, isEnd);
     }, 300);
   }
 
-  handleAutocompleteKeydown(event) {
-    const resultsContainer = document.getElementById('autocomplete-results');
-
+  handleAutocompleteKeydown(
+    event,
+    resultsContainer,
+    input,
+    selectedIndexProp,
+    resultsProp,
+    locationProp,
+  ) {
     if (
-      !this.autocompleteResults.length ||
+      !this[resultsProp].length ||
       resultsContainer.style.display === 'none'
     ) {
       return;
@@ -323,56 +355,50 @@ class RouteGenerator {
     switch (event.key) {
       case 'ArrowDown':
         event.preventDefault();
-        this.selectedIndex = Math.min(
-          this.selectedIndex + 1,
-          this.autocompleteResults.length - 1,
+        this[selectedIndexProp] = Math.min(
+          this[selectedIndexProp] + 1,
+          this[resultsProp].length - 1,
         );
-        this.updateAutocompleteResults(this.autocompleteResults);
+        this.updateAutocompleteResults(
+          this[resultsProp],
+          resultsContainer,
+          selectedIndexProp === 'endSelectedIndex',
+        );
         break;
 
       case 'ArrowUp':
         event.preventDefault();
-        this.selectedIndex = Math.max(this.selectedIndex - 1, -1);
-        this.updateAutocompleteResults(this.autocompleteResults);
+        this[selectedIndexProp] = Math.max(this[selectedIndexProp] - 1, -1);
+        this.updateAutocompleteResults(
+          this[resultsProp],
+          resultsContainer,
+          selectedIndexProp === 'endSelectedIndex',
+        );
         break;
 
       case 'Enter':
         event.preventDefault();
-        if (this.selectedIndex >= 0) {
-          this.selectLocation(this.autocompleteResults[this.selectedIndex]);
+        if (this[selectedIndexProp] >= 0) {
+          if (selectedIndexProp === 'endSelectedIndex') {
+            this.selectEndLocation(this[resultsProp][this[selectedIndexProp]]);
+          } else {
+            this.selectLocation(this[resultsProp][this[selectedIndexProp]]);
+          }
         }
         break;
 
       case 'Escape':
         resultsContainer.style.display = 'none';
-        this.selectedIndex = -1;
+        this[selectedIndexProp] = -1;
         break;
     }
   }
 
   initMap() {
-    this.map = new maplibregl.Map({
+    mapboxgl.accessToken = this.MAPBOX_API_KEY;
+    this.map = new mapboxgl.Map({
       container: 'map',
-      style: {
-        version: 8,
-        sources: {
-          osm: {
-            type: 'raster',
-            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-            tileSize: 256,
-            attribution: '© OpenStreetMap contributors',
-          },
-        },
-        layers: [
-          {
-            id: 'osm',
-            type: 'raster',
-            source: 'osm',
-            minzoom: 0,
-            maxzoom: 19,
-          },
-        ],
-      },
+      style: 'mapbox://styles/mapbox/outdoors-v12',
       center: [-0.1276, 51.5074],
       zoom: 12,
     });
@@ -433,6 +459,34 @@ class RouteGenerator {
           'line-color': '#c62828',
           'line-width': 6,
         },
+      });
+
+      // Add direction arrows for attempted routes (unselected)
+      this.map.addLayer({
+        id: 'route-arrows-unselected',
+        type: 'symbol',
+        source: 'attempted-routes',
+        layout: {
+          'symbol-placement': 'line',
+          'symbol-spacing': 100,
+          'icon-image': 'triangle-11',
+          'icon-size': 0.8,
+          'icon-rotate': 90,
+          'icon-rotation-alignment': 'map',
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+          'icon-padding': 0,
+        },
+        paint: {
+          'icon-opacity': [
+            'case',
+            ['boolean', ['feature-state', 'hover'], false],
+            0.8,
+            0.4,
+          ],
+          'icon-color': this.config.route.unselected.color,
+        },
+        filter: ['!=', ['get', 'selected'], true],
       });
 
       // Layer for unselected routes border
@@ -508,6 +562,29 @@ class RouteGenerator {
         filter: ['==', ['get', 'selected'], true],
       });
 
+      // Add direction arrows for selected route
+      this.map.addLayer({
+        id: 'route-arrows-selected',
+        type: 'symbol',
+        source: 'attempted-routes',
+        layout: {
+          'symbol-placement': 'line',
+          'symbol-spacing': 100,
+          'icon-image': 'triangle-11',
+          'icon-size': 1,
+          'icon-rotate': 90,
+          'icon-rotation-alignment': 'map',
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+          'icon-padding': 0,
+        },
+        paint: {
+          'icon-opacity': 1,
+          'icon-color': this.config.route.selected.color,
+        },
+        filter: ['==', ['get', 'selected'], true],
+      });
+
       // Add click interaction for routes
       this.map.on('click', 'attempted-routes-unselected', (e) => {
         if (e.features.length > 0) {
@@ -528,16 +605,38 @@ class RouteGenerator {
         this.map.getCanvas().style.cursor = '';
       });
 
-      // Layer for waypoints
+      // Update waypoints layer with larger circles and labels
       this.map.addLayer({
         id: 'waypoints',
         type: 'circle',
         source: 'waypoints',
         paint: {
-          'circle-radius': 6,
+          'circle-radius': 8,
           'circle-color': ['get', 'color'],
-          'circle-stroke-width': 2,
+          'circle-stroke-width': 3,
           'circle-stroke-color': '#ffffff',
+        },
+      });
+
+      // Add labels for waypoints
+      this.map.addLayer({
+        id: 'waypoint-labels',
+        type: 'symbol',
+        source: 'waypoints',
+        layout: {
+          'text-field': [
+            'number-format',
+            ['get', 'index'],
+            { locale: 'en-US' },
+          ],
+          'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+          'text-size': 14,
+          'text-offset': [0, -1.5],
+        },
+        paint: {
+          'text-color': '#000000',
+          'text-halo-color': '#ffffff',
+          'text-halo-width': 2,
         },
       });
 
@@ -632,7 +731,7 @@ class RouteGenerator {
     if (this.userMarker) {
       this.userMarker.remove();
     }
-    this.userMarker = new maplibregl.Marker()
+    this.userMarker = new mapboxgl.Marker()
       .setLngLat(coordinates)
       .addTo(this.map);
     this.map.flyTo({
@@ -645,16 +744,11 @@ class RouteGenerator {
   async reverseGeocode(lat, lon) {
     try {
       const response = await fetch(
-        `https://api.openrouteservice.org/geocode/reverse?api_key=${this.ORS_API_KEY}&point.lon=${lon}&point.lat=${lat}`,
-        {
-          headers: {
-            Accept: 'application/json',
-          },
-        },
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lon},${lat}.json?access_token=${this.MAPBOX_API_KEY}`,
       );
       const data = await response.json();
       if (data.features && data.features.length > 0) {
-        return data.features[0].properties.label;
+        return data.features[0].place_name;
       }
       return `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
     } catch (error) {
@@ -666,26 +760,19 @@ class RouteGenerator {
   async getIsochrone(startCoords, activity, duration) {
     try {
       console.log('Requesting isochrone for:', startCoords, activity, duration);
+
+      // Convert activity type to Mapbox profile
+      const profile = this.getMapboxProfile(activity);
+
+      // Convert duration from seconds to minutes for Mapbox API
+      const durationMinutes = Math.round(duration / 60);
+
       const response = await fetch(
-        `https://api.openrouteservice.org/v2/isochrones/${activity}/geojson`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': this.ORS_API_KEY,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            locations: [startCoords],
-            range: [duration],
-            location_type: 'start',
-            range_type: 'time',
-          }),
-        },
+        `https://api.mapbox.com/isochrone/v1/mapbox/${profile}/${startCoords[0]},${startCoords[1]}?contours_minutes=${durationMinutes}&polygons=true&access_token=${this.MAPBOX_API_KEY}`,
       );
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error.message || 'Failed to fetch isochrone');
+        throw new Error('Failed to fetch isochrone');
       }
 
       const data = await response.json();
@@ -761,14 +848,11 @@ class RouteGenerator {
   async geocode(location) {
     try {
       const response = await fetch(
-        `https://api.openrouteservice.org/geocode/search?api_key=${
-          this.ORS_API_KEY
-        }&text=${encodeURIComponent(location)}`,
-        {
-          headers: {
-            Accept: 'application/json',
-          },
-        },
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+          location,
+        )}.json?access_token=${
+          this.MAPBOX_API_KEY
+        }&types=address,place,poi&limit=5`,
       );
       const data = await response.json();
       if (data.features && data.features.length > 0) {
@@ -782,20 +866,38 @@ class RouteGenerator {
   }
 
   // Debug visualization function
-  visualizeDebugPoints(waypoints, type = 'regular') {
+  visualizeDebugPoints(waypoints, type = 'loop') {
     if (!this.debug) return;
 
     let features = waypoints.map((waypoint, index) => {
       let color;
-      if (type === 'regular') {
-        color = index === 0 ? '#4CAF50' : '#FF9800';
+      let label = '';
+
+      if (type === 'loop') {
+        if (index === 0) {
+          color = '#4CAF50'; // Start point (green)
+          label = 'Start/End';
+        } else if (index === 1) {
+          color = '#FF9800'; // Outward point (orange)
+          label = 'Outward';
+        } else if (index === waypoints.length - 1) {
+          color = '#4CAF50'; // End point (same as start for loop)
+          label = 'Start/End';
+        } else {
+          color = '#2196F3'; // Return points (blue)
+          label = 'Return';
+        }
       } else if (type === 'oneway') {
-        color =
-          index === 0
-            ? '#4CAF50'
-            : index === waypoints.length - 1
-            ? '#FF6B6B'
-            : '#FF9800';
+        if (index === 0) {
+          color = '#4CAF50'; // Start point (green)
+          label = 'Start';
+        } else if (index === waypoints.length - 1) {
+          color = '#FF6B6B'; // End point (red)
+          label = 'End';
+        } else {
+          color = '#2196F3'; // Intermediate points (blue)
+          label = 'Via';
+        }
       }
 
       return {
@@ -806,7 +908,8 @@ class RouteGenerator {
         },
         properties: {
           color: color,
-          index: index,
+          index: index + 1,
+          label: label,
         },
       };
     });
@@ -821,94 +924,129 @@ class RouteGenerator {
     try {
       console.log('Generating waypoints for duration:', duration);
 
-      // For round trips, we want to get back to start, so use half duration for outward journey
-      const isochroneDuration = duration / 2;
-      const polygon = await this.getIsochrone(
-        startCoords,
-        activity,
-        isochroneDuration,
-      );
+      // Helper function to generate forward waypoints using isochrone
+      const generateForwardWaypoints = async (center, duration, numPoints) => {
+        // Get isochrone for outward point (using 1/3 of total duration)
+        const outwardIsochrone = await this.getIsochrone(
+          center,
+          activity,
+          duration / 3,
+        );
 
-      const numWaypoints = this.calculateWaypoints(duration);
-      console.log('Calculated waypoints:', numWaypoints);
+        const points = [];
+        // Generate multiple points along the isochrone boundary
+        for (let i = 0; i < numPoints; i++) {
+          try {
+            const point = this.getRandomPointInPolygon(outwardIsochrone);
+            points.push(point);
+          } catch (error) {
+            console.log('Error generating point:', error);
+          }
+        }
+        return points;
+      };
 
-      const maxAttempts = 10;
+      // Helper function to generate return waypoints using isochrones
+      const generateReturnWaypoints = async (
+        outwardPoint,
+        startPoint,
+        numPoints,
+        remainingDuration,
+      ) => {
+        // Get isochrones for both outward point and start point
+        const [outwardIsochrone, startIsochrone] = await Promise.all([
+          this.getIsochrone(outwardPoint, activity, remainingDuration / 2),
+          this.getIsochrone(startPoint, activity, remainingDuration / 2),
+        ]);
+
+        const points = [];
+        // Find points in the overlapping region of both isochrones
+        for (let i = 0; i < numPoints; i++) {
+          let attempts = 0;
+          const maxAttempts = 10;
+
+          while (attempts < maxAttempts) {
+            try {
+              // Try to find a point in the first isochrone
+              const point = this.getRandomPointInPolygon(outwardIsochrone);
+              // Check if it's also in the second isochrone
+              if (this.isPointInPolygon(point, startIsochrone.coordinates[0])) {
+                points.push(point);
+                break;
+              }
+            } catch (error) {
+              console.log('Error generating return point:', error);
+            }
+            attempts++;
+          }
+        }
+        return points;
+      };
+
       const allRoutes = [];
+      const maxAttempts = 3; // Limit to 3 API calls
 
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
         try {
-          const waypoints = [startCoords];
-          let lastPoint = startCoords;
-          let remainingDuration = isochroneDuration;
+          // Generate outward points
+          const outwardPoints = await generateForwardWaypoints(
+            startCoords,
+            duration,
+            3, // Generate 3 potential points
+          );
 
-          // Generate waypoints progressively further from the previous point
-          for (let i = 0; i < numWaypoints - 1; i++) {
-            const progressFactor = (i + 1) / (numWaypoints - 1); // 0 to 1
-            const targetDuration = remainingDuration * progressFactor;
-
-            // Get isochrone for current point with remaining duration
-            const currentIsochrone = await this.getIsochrone(
-              lastPoint,
-              activity,
-              targetDuration,
-            );
-
-            // Find point in both the original polygon and current isochrone
-            let point;
-            let pointFound = false;
-            let attempts = 0;
-            const maxPointAttempts = 50;
-
-            while (!pointFound && attempts < maxPointAttempts) {
-              const candidatePoint =
-                this.getRandomPointInPolygon(currentIsochrone);
-
-              // Check if point is in original polygon
-              if (
-                this.isPointInPolygon(candidatePoint, polygon.coordinates[0])
-              ) {
-                point = candidatePoint;
-                pointFound = true;
-              }
-              attempts++;
-            }
-
-            if (!pointFound) {
-              console.log(
-                `Attempt ${
-                  attempt + 1
-                }: Could not find valid point for waypoint ${i + 1}`,
-              );
-              break;
-            }
-
-            waypoints.push(point);
-            lastPoint = point;
-
-            // Visualize waypoints for debugging
-            this.visualizeDebugPoints(waypoints);
+          if (outwardPoints.length === 0) {
+            throw new Error('No valid outward points generated');
           }
 
-          // Add start point to complete the round trip
-          waypoints.push(startCoords);
+          // Randomly select one of the outward points
+          const outwardPoint =
+            outwardPoints[Math.floor(Math.random() * outwardPoints.length)];
+
+          // Calculate remaining duration after reaching outward point
+          const outwardRoute = await this.getRoute(
+            [startCoords, outwardPoint],
+            activity,
+            'loop',
+          );
+          const remainingDuration = duration - outwardRoute.summary.duration;
+
+          // Generate return waypoints
+          const returnPoints = await generateReturnWaypoints(
+            outwardPoint,
+            startCoords,
+            2, // Use 2 points for the return journey
+            remainingDuration,
+          );
+
+          if (returnPoints.length < 2) {
+            throw new Error('Not enough valid return points generated');
+          }
+
+          // Combine into final route waypoints
+          const waypoints = [
+            startCoords,
+            outwardPoint,
+            ...returnPoints,
+            startCoords,
+          ];
+
+          // Visualize waypoints for debugging
           this.visualizeDebugPoints(waypoints);
 
-          // Only proceed if we found all waypoints
-          if (waypoints.length === numWaypoints + 1) {
-            const route = await this.getRoute(waypoints, activity, 'round');
+          const route = await this.getRoute(waypoints, activity, 'loop');
 
-            // Validate route duration is within acceptable range (0.8 - 1.2 of target)
-            const minDuration = duration;
-            const maxDuration = duration * 1.2;
-            if (
-              route.summary.duration >= minDuration &&
-              route.summary.duration <= maxDuration
-            ) {
-              allRoutes.push({
-                ...route,
-                waypoints,
-              });
-            }
+          // Validate route duration is within acceptable range (0.8 - 1.2 of target)
+          const minDuration = duration * 0.8;
+          const maxDuration = duration * 1.2;
+          if (
+            route.summary.duration >= minDuration &&
+            route.summary.duration <= maxDuration
+          ) {
+            allRoutes.push({
+              ...route,
+              waypoints,
+            });
           }
         } catch (error) {
           console.log(`Attempt ${attempt + 1} failed:`, error);
@@ -919,20 +1057,12 @@ class RouteGenerator {
         throw new Error('Could not generate any suitable routes');
       }
 
-      // Sort routes by how close they are to target duration
-      allRoutes.sort(
-        (a, b) =>
-          Math.abs(a.summary.duration - duration) -
-          Math.abs(b.summary.duration - duration),
-      );
+      // Sort routes by duration (prefer shorter routes that meet minimum)
+      allRoutes.sort((a, b) => a.summary.duration - b.summary.duration);
 
-      // Take only the 3 closest routes to target duration
       const topRoutes = allRoutes.slice(0, 3);
-
-      // Display route options and select the best one
       this.displayRouteOptions(topRoutes);
 
-      // Update the attempted routes source with all routes
       this.attemptedRoutesSource.setData({
         type: 'FeatureCollection',
         features: topRoutes.map((route, index) => ({
@@ -945,14 +1075,12 @@ class RouteGenerator {
         })),
       });
 
-      // Clear the main route source as we're showing all routes in attempted routes
       this.routeSource.setData({
         type: 'FeatureCollection',
         features: [],
       });
 
       this.selectRoute(topRoutes, 0);
-
       return topRoutes[0].waypoints;
     } catch (error) {
       console.error('Error generating waypoints:', error);
@@ -972,52 +1100,50 @@ class RouteGenerator {
   async getRoute(waypoints, activity, tripType, options = {}) {
     try {
       console.log('Requesting route with waypoints:', waypoints);
-      const requestBody = {
-        coordinates: waypoints,
-        continue_straight: tripType === 'oneway',
-      };
 
-      // Add alternative routes options if provided
-      if (options.alternative_routes) {
-        requestBody.alternative_routes = options.alternative_routes;
-      }
+      // Convert activity type to Mapbox profile
+      const profile = this.getMapboxProfile(activity);
+
+      // Format coordinates for Mapbox Directions API
+      const coordinates = waypoints.map((coord) => coord.join(',')).join(';');
 
       const response = await fetch(
-        `https://api.openrouteservice.org/v2/directions/${activity}/geojson`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': this.ORS_API_KEY,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestBody),
-        },
+        `https://api.mapbox.com/directions/v5/mapbox/${profile}/${coordinates}?access_token=${
+          this.MAPBOX_API_KEY
+        }&geometries=geojson&overview=full&alternatives=${
+          options.alternative_routes ? 'true' : 'false'
+        }&continue_straight=${tripType === 'oneway'}`,
       );
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error.message || 'Failed to get route');
+        throw new Error('Failed to get route');
       }
 
       const data = await response.json();
       console.log('Route API response:', data);
 
-      if (!data.features || !data.features[0] || !data.features[0].geometry) {
-        throw new Error('Invalid route data received');
+      if (!data.routes || data.routes.length === 0) {
+        throw new Error('No route found');
       }
 
-      // Return main route with alternatives if they exist
+      // Convert Mapbox response to our format
       const mainRoute = {
-        geometry: data.features[0].geometry,
-        properties: data.features[0].properties,
-        summary: data.features[0].properties.summary,
+        geometry: data.routes[0].geometry,
+        summary: {
+          distance: data.routes[0].distance,
+          duration: data.routes[0].duration,
+        },
+        waypoints: waypoints,
       };
 
-      if (data.features.length > 1) {
-        mainRoute.alternatives = data.features.slice(1).map((feature) => ({
-          geometry: feature.geometry,
-          properties: feature.properties,
-          summary: feature.properties.summary,
+      if (data.routes.length > 1) {
+        mainRoute.alternatives = data.routes.slice(1).map((route) => ({
+          geometry: route.geometry,
+          summary: {
+            distance: route.distance,
+            duration: route.duration,
+          },
+          waypoints: waypoints,
         }));
       }
 
@@ -1133,7 +1259,7 @@ class RouteGenerator {
       // Fit map to route bounds
       const coordinates = route.geometry.coordinates;
       if (coordinates && coordinates.length > 0) {
-        const bounds = new maplibregl.LngLatBounds();
+        const bounds = new mapboxgl.LngLatBounds();
         coordinates.forEach((coord) => {
           bounds.extend(coord);
         });
@@ -1232,8 +1358,8 @@ class RouteGenerator {
 
   selectEndLocation(location) {
     const input = document.getElementById('end-location');
-    input.value = location.properties.label;
-    document.getElementById('end-autocomplete-results').style.display = 'none';
+    input.value = location.place_name;
+    document.getElementById('end-results').style.display = 'none';
     this.endLocation = location.geometry.coordinates;
     this.updateDestinationMarker(this.endLocation);
   }
@@ -1242,13 +1368,13 @@ class RouteGenerator {
     if (this.destinationMarker) {
       this.destinationMarker.remove();
     }
-    this.destinationMarker = new maplibregl.Marker({ color: '#FF6B6B' })
+    this.destinationMarker = new mapboxgl.Marker({ color: '#FF6B6B' })
       .setLngLat(coordinates)
       .addTo(this.map);
 
     // Adjust map to show both markers
     if (this.currentLocation) {
-      const bounds = new maplibregl.LngLatBounds()
+      const bounds = new mapboxgl.LngLatBounds()
         .extend(this.currentLocation)
         .extend(coordinates);
       this.map.fitBounds(bounds, {
@@ -1378,35 +1504,18 @@ class RouteGenerator {
         activity,
         'oneway',
         {
-          alternative_routes: {
-            target_count: 3,
-            weight_factor: 1.4,
-          },
+          alternative_routes: true,
         },
       );
 
-      const directDuration = directRoute.properties.summary.duration;
+      const directDuration = directRoute.summary.duration;
 
       // If direct route is longer than minimum duration, use direct routes
       if (directDuration >= duration) {
-        const allDirectRoutes = [
-          {
-            geometry: directRoute.geometry,
-            properties: directRoute.properties,
-            summary: directRoute.properties.summary,
-            waypoints: [startCoords, endCoords],
-          },
-        ];
+        const allDirectRoutes = [directRoute];
 
         if (directRoute.alternatives) {
-          allDirectRoutes.push(
-            ...directRoute.alternatives.map((route) => ({
-              geometry: route.geometry,
-              properties: route.properties,
-              summary: route.properties.summary,
-              waypoints: [startCoords, endCoords],
-            })),
-          );
+          allDirectRoutes.push(...directRoute.alternatives);
         }
 
         // Sort by duration and take top 3
@@ -1585,6 +1694,7 @@ class RouteGenerator {
     const routeSelectionPanel = document.getElementById(
       'route-selection-panel',
     );
+    const controlsPanel = document.getElementById('controls');
     routeOptionsContainer.innerHTML = '';
 
     routes.forEach((route, index) => {
@@ -1604,7 +1714,14 @@ class RouteGenerator {
       routeOptionsContainer.appendChild(routeOption);
     });
 
+    // Show route selection panel and conditionally collapse route settings
     routeSelectionPanel.style.display = 'block';
+    routeSelectionPanel.open = true;
+
+    // Only collapse controls panel on mobile screens
+    if (this.isMobileScreen()) {
+      controlsPanel.open = false;
+    }
   }
 
   selectRoute(routes, selectedIndex) {
@@ -1641,7 +1758,7 @@ class RouteGenerator {
     // Fit map to selected route bounds with asymmetric padding
     const coordinates = routes[selectedIndex].geometry.coordinates;
     if (coordinates && coordinates.length > 0) {
-      const bounds = new maplibregl.LngLatBounds();
+      const bounds = new mapboxgl.LngLatBounds();
       coordinates.forEach((coord) => {
         bounds.extend(coord);
       });
@@ -1669,6 +1786,7 @@ class RouteGenerator {
           .classList.remove('active');
         this.map.getCanvas().style.cursor = '';
         this.hideNotification();
+        this.restorePanels();
 
         // Reverse geocode and update start input
         const address = await this.reverseGeocode(
@@ -1683,6 +1801,7 @@ class RouteGenerator {
         document.getElementById('end-marker-button').classList.remove('active');
         this.map.getCanvas().style.cursor = '';
         this.hideNotification();
+        this.restorePanels();
 
         // Reverse geocode and update end input
         const address = await this.reverseGeocode(
@@ -1703,6 +1822,58 @@ class RouteGenerator {
   hideNotification() {
     const notification = document.getElementById('notification');
     notification.classList.remove('show');
+  }
+
+  // Add new methods for panel management
+  savePanelStates() {
+    const controlsPanel = document.getElementById('controls');
+    const routeSelectionPanel = document.getElementById(
+      'route-selection-panel',
+    );
+
+    this.panelStates.controls = controlsPanel.open;
+    this.panelStates.routeSelection = routeSelectionPanel.open;
+  }
+
+  collapsePanels() {
+    this.savePanelStates();
+
+    const controlsPanel = document.getElementById('controls');
+    const routeSelectionPanel = document.getElementById(
+      'route-selection-panel',
+    );
+
+    controlsPanel.open = false;
+    routeSelectionPanel.open = false;
+  }
+
+  restorePanels() {
+    const controlsPanel = document.getElementById('controls');
+    const routeSelectionPanel = document.getElementById(
+      'route-selection-panel',
+    );
+
+    controlsPanel.open = this.panelStates.controls;
+    routeSelectionPanel.open = this.panelStates.routeSelection;
+  }
+
+  // Add method to check if screen is mobile
+  isMobileScreen() {
+    return window.innerWidth < this.MOBILE_BREAKPOINT;
+  }
+
+  // Helper method to convert activity type to Mapbox profile
+  getMapboxProfile(activity) {
+    switch (activity) {
+      case 'foot-walking':
+        return 'walking';
+      case 'foot-hiking':
+        return 'walking';
+      case 'cycling-regular':
+        return 'cycling';
+      default:
+        return 'walking';
+    }
   }
 }
 
