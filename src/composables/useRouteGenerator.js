@@ -117,8 +117,9 @@ export async function generateLoops(
   target,
   targetType,
   candidates = 8,
+  activity = profile,
 ) {
-  const speed = SPEED_MS[profile] || SPEED_MS.walking;
+  const speed = SPEED_MS[activity] || SPEED_MS[profile] || SPEED_MS.walking;
   const bearings = bearingsAround(candidates, true);
   const results = await Promise.all(
     bearings.map((b) =>
@@ -184,8 +185,9 @@ export async function generateOutBacks(
   target,
   targetType,
   candidates = 6,
+  activity = profile,
 ) {
-  const speed = SPEED_MS[profile] || SPEED_MS.walking;
+  const speed = SPEED_MS[activity] || SPEED_MS[profile] || SPEED_MS.walking;
   const bearings = bearingsAround(candidates, true);
   const results = await Promise.all(
     bearings.map((b) =>
@@ -208,8 +210,8 @@ export async function generateOutBacks(
 // If the direct route already meets the target, surface it + alternatives.
 // Otherwise, place a midpoint perpendicular to start→end and binary-search
 // the offset distance. Perpendicular detour adds roughly 2× offset to total.
-export async function generateOneWay(start, end, profile, target, targetType) {
-  const speed = SPEED_MS[profile] || SPEED_MS.walking;
+export async function generateOneWay(start, end, profile, target, targetType, activity = profile) {
+  const speed = SPEED_MS[activity] || SPEED_MS[profile] || SPEED_MS.walking;
   const targetMeters = targetType === 'time' ? target * speed : target;
 
   const direct = await directions([start, end], profile, {
@@ -283,14 +285,14 @@ export async function generateRoutes({
   const profile = profileFor(activity);
 
   if (tripType === 'loop') {
-    return generateLoops(start, profile, target, targetType);
+    return generateLoops(start, profile, target, targetType, undefined, activity);
   }
   if (tripType === 'outback') {
-    return generateOutBacks(start, profile, target, targetType);
+    return generateOutBacks(start, profile, target, targetType, undefined, activity);
   }
   if (tripType === 'oneway') {
     if (!end) throw new Error('End location required for one-way');
-    return generateOneWay(start, end, profile, target, targetType);
+    return generateOneWay(start, end, profile, target, targetType, activity);
   }
   throw new Error(`Unknown trip type: ${tripType}`);
 }

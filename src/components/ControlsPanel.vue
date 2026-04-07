@@ -5,7 +5,6 @@ import LocationInput from './LocationInput.vue'
 import { reverseGeocode } from '../lib/mapbox'
 
 const store = useRouteStore()
-const collapsed = ref(false)
 
 // Distance is always shown with 2 decimals; time stays integer minutes.
 const targetDisplay = ref(formatTarget(store.targetValue))
@@ -44,15 +43,12 @@ async function useCurrentLocation() {
 </script>
 
 <template>
-  <div class="panel controls" :class="{ collapsed }">
+  <div class="panel controls">
     <header>
       <h1>Routed</h1>
-      <button class="toggle" @click="collapsed = !collapsed" :title="collapsed ? 'Expand' : 'Collapse'">
-        {{ collapsed ? '+' : '−' }}
-      </button>
     </header>
 
-    <div v-show="!collapsed" class="body">
+    <div class="body">
       <div class="field">
         <label>Start</label>
         <div class="row">
@@ -100,7 +96,8 @@ async function useCurrentLocation() {
       <div class="field">
         <label>Activity</label>
         <div class="seg">
-          <button :class="{ on: store.activity === 'walking' }" @click="store.activity = 'walking'">Walk / Run</button>
+          <button :class="{ on: store.activity === 'walking' }" @click="store.activity = 'walking'">Walk</button>
+          <button :class="{ on: store.activity === 'running' }" @click="store.activity = 'running'">Run</button>
           <button :class="{ on: store.activity === 'cycling' }" @click="store.activity = 'cycling'">Cycle</button>
         </div>
       </div>
@@ -145,23 +142,6 @@ async function useCurrentLocation() {
       </button>
 
       <div v-if="store.error" class="error">{{ store.error }}</div>
-
-      <div v-if="store.savedRoutes.length" class="saved">
-        <label>Saved routes</label>
-        <ul>
-          <li v-for="entry in store.savedRoutes" :key="entry.id">
-            <button class="saved-name" @click="store.loadSaved(entry.id)" :title="entry.name">
-              {{ entry.name }}
-            </button>
-            <button
-              class="saved-del"
-              @click="store.deleteSaved(entry.id)"
-              title="Delete"
-              aria-label="Delete saved route"
-            >×</button>
-          </li>
-        </ul>
-      </div>
     </div>
 
     <div v-if="store.shareToast" class="toast">{{ store.shareToast }}</div>
@@ -170,14 +150,8 @@ async function useCurrentLocation() {
 
 <style scoped>
 .controls {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  width: 320px;
-  padding: 16px;
-  z-index: 5;
-  max-height: calc(100vh - 32px);
-  overflow-y: auto;
+  width: 100%;
+  padding: 20px;
 
   /* Light theme overrides — only affect this panel */
   --c-text: #1a1c1a;
@@ -187,13 +161,11 @@ async function useCurrentLocation() {
   --c-input-bg-focus: rgba(0, 0, 0, 0.075);
   --c-border: rgba(0, 0, 0, 0.08);
 
-  background: var(--c-bg);
-  border: 1px solid var(--c-border);
+  background: transparent;
   color: var(--c-text);
 }
 header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
 h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; color: var(--primary-dim); }
-.toggle { width: 24px; height: 24px; border-radius: 6px; background: var(--c-input-bg); color: var(--c-text-dim); display: grid; place-items: center; font-size: 16px; }
 .body { display: flex; flex-direction: column; gap: 12px; }
 .field { display: flex; flex-direction: column; gap: 6px; }
 label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--c-text-dim); }
@@ -306,45 +278,6 @@ label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; colo
   color: #c62828;
   font-size: 13px;
 }
-.controls.collapsed { padding: 12px 16px; }
-
-.saved {
-  margin-top: 6px;
-  padding-top: 12px;
-  border-top: 1px solid var(--c-border);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.saved ul { display: flex; flex-direction: column; gap: 4px; }
-.saved li {
-  display: flex;
-  align-items: stretch;
-  background: var(--c-input-bg);
-  border-radius: 8px;
-  overflow: hidden;
-}
-.saved li:hover { background: var(--c-input-bg-focus); }
-.saved-name {
-  flex: 1;
-  text-align: left;
-  padding: 8px 12px;
-  font-size: 13px;
-  color: var(--c-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.saved-name:hover { color: var(--primary-dim); }
-.saved-del {
-  flex-shrink: 0;
-  width: 32px;
-  display: grid;
-  place-items: center;
-  font-size: 16px;
-  color: var(--c-text-dim);
-}
-.saved-del:hover { color: var(--primary-dim); background: rgba(225, 29, 72, 0.1); }
 
 .toast {
   position: absolute;

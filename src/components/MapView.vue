@@ -74,12 +74,9 @@ watch(
   },
 )
 
-// Compute viewport padding so the route fits clear of the floating panels.
-// Slightly heavier on the top-left where the overlay widgets sit.
-// Controls: 16 gap + 320 width = 336.  Selection (when shown): + 16 + 240 = 592.
+// Sidebar holds the controls now, so the map gets uniform padding.
 function fitPadding() {
-  const left = (store.candidates.length ? 608 : 352) + 24
-  return { top: 80, bottom: 48, left, right: 48 }
+  return { top: 60, bottom: 60, left: 60, right: 60 }
 }
 
 watch(
@@ -105,6 +102,7 @@ watch(
     fitToRoute(store.candidates[i].geometry, fitPadding())
   },
 )
+
 </script>
 
 <template>
@@ -112,5 +110,5 @@ watch(
 </template>
 
 <style scoped>
-.map { position: absolute; inset: 0; }
+.map { position: absolute; inset: 0; width: 100%; height: 100%; }
 </style>

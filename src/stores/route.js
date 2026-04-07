@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { generateRoutes, rankByCloseness } from '../composables/useRouteGenerator'
-import { toMeters } from '../lib/units'
+import { toMeters, formatDistance, formatDuration } from '../lib/units'
 import {
   buildShareUrl,
   readHashRoute,
@@ -14,7 +14,7 @@ import {
 export const useRouteStore = defineStore('route', {
   state: () => ({
     // Settings
-    activity: 'walking', // walking | cycling
+    activity: 'walking', // walking | running | cycling
     tripType: 'loop', // loop | outback | oneway
     targetType: 'distance', // distance | time
     targetValue: 5, // value in selected unit (or minutes if time)
@@ -104,22 +104,37 @@ export const useRouteStore = defineStore('route', {
       return true
     },
 
-    async shareSelected() {
-      const route = this.selected
+    shareUrlFor(route) {
+      return route ? buildShareUrl(route, this) : ''
+    },
+
+    // Build a sensible default save name: "5.00mi loop from <start>".
+    suggestedName(route) {
+      if (!route) return 'My route'
+      const dist = formatDistance(route.distance, this.unit)
+      const kind =
+        this.tripType === 'loop'
+          ? 'loop'
+          : this.tripType === 'outback'
+            ? 'out & back'
+            : 'route'
+      const where = this.startLabel ? ` from ${this.startLabel.split(',')[0]}` : ''
+      return `${dist} ${kind}${where}`
+    },
+
+    async copyShareLink(route) {
       if (!route) return
       const url = buildShareUrl(route, this)
       try {
         await navigator.clipboard.writeText(url)
         this.flashToast('Link copied to clipboard')
       } catch {
-        // Fallback: drop the URL into the address bar so the user can copy it.
         location.hash = url.split('#')[1] || ''
         this.flashToast('Link is in your address bar')
       }
     },
 
-    saveSelected(name) {
-      const route = this.selected
+    saveRoute(route, name) {
       if (!route || !name) return
       const entry = addSaved(name.trim(), route, this)
       this.savedRoutes = [entry, ...this.savedRoutes.filter((e) => e.id !== entry.id)]
