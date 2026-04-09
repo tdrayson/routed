@@ -56,16 +56,11 @@ watch(
     v-if="store.sharedView"
     class="flex flex-col w-full h-full overflow-hidden bg-background p-6 gap-6 max-md:px-4 max-md:pt-8 max-md:pb-4 max-md:gap-4"
   >
-    <!-- Mobile-only inline title -->
-    <div class="shrink-0 md:hidden">
+    <div class="shrink-0">
       <SharedRouteView />
     </div>
     <div class="flex-1 min-h-0 relative overflow-hidden">
       <MapView />
-      <!-- Desktop overlay title -->
-      <div class="hidden md:block absolute top-6 left-6 z-10 max-w-[420px] bg-card/95 backdrop-blur border border-border rounded-xl shadow-[var(--shadow-card)] px-5 py-4 pointer-events-none">
-        <SharedRouteView />
-      </div>
       <button
         class="absolute top-6 right-6 max-md:top-3 max-md:right-3 z-10 w-10 h-10 grid place-items-center bg-card/95 backdrop-blur border border-border rounded-lg shadow-[var(--shadow-card)] text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/10 transition-colors"
         @click="recenterShared"

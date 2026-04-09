@@ -195,6 +195,14 @@ export function useMap() {
     })
   }
 
+  function createDotElement() {
+    const el = document.createElement('div')
+    el.style.cssText =
+      'width:18px;height:18px;border-radius:50%;background:#e11d48;' +
+      'border:4px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.25);box-sizing:content-box;'
+    return el
+  }
+
   function setStartMarker(coords) {
     if (!coords) {
       startMarker?.remove()
@@ -202,7 +210,7 @@ export function useMap() {
       return
     }
     if (startMarker) startMarker.setLngLat(coords)
-    else startMarker = new mapboxgl.Marker({ color: '#e11d48' }).setLngLat(coords).addTo(map.value)
+    else startMarker = new mapboxgl.Marker({ element: createDotElement() }).setLngLat(coords).addTo(map.value)
   }
 
   function setEndMarker(coords) {
@@ -212,7 +220,7 @@ export function useMap() {
       return
     }
     if (endMarker) endMarker.setLngLat(coords)
-    else endMarker = new mapboxgl.Marker({ color: '#c62828' }).setLngLat(coords).addTo(map.value)
+    else endMarker = new mapboxgl.Marker({ element: createDotElement() }).setLngLat(coords).addTo(map.value)
   }
 
   function flyTo(coords, zoom = 14) {
