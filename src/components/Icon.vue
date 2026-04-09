@@ -59,6 +59,8 @@ const icon = computed(() => ICONS[props.name] || { d: '' })
     :stroke-width="icon.filled ? undefined : strokeWidth"
     stroke-linecap="round"
     stroke-linejoin="round"
+    aria-hidden="true"
+    focusable="false"
     v-html="icon.d"
   />
 </template>

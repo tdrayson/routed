@@ -46,6 +46,25 @@ function onDeleteSaved(id) {
 watch(hasGenerated, (v) => v && (tab.value = 'generated'))
 watch([hasGenerated, hasSaved], maybeAutoSwitch, { immediate: true })
 
+// Arrow-key navigation for the tablist. Moves focus to the newly
+// selected tab so the focus ring follows.
+function onTabKey(e) {
+  const keys = ['ArrowLeft', 'ArrowRight', 'Home', 'End']
+  if (!keys.includes(e.key)) return
+  e.preventDefault()
+  const buttons = Array.from(e.currentTarget.querySelectorAll('[role="tab"]'))
+  const order = ['generated', 'saved']
+  const cur = order.indexOf(tab.value)
+  let next = cur
+  if (e.key === 'ArrowRight') next = cur === order.length - 1 ? 0 : cur + 1
+  else if (e.key === 'ArrowLeft') next = cur === 0 ? order.length - 1 : cur - 1
+  else if (e.key === 'Home') next = 0
+  else if (e.key === 'End') next = order.length - 1
+  if (order[next] === 'generated' && !hasGenerated.value) next = order.indexOf('saved')
+  tab.value = order[next]
+  nextTick(() => buttons[next]?.focus())
+}
+
 const scroller = ref(null)
 function scrollToTop() {
   nextTick(() => {
@@ -80,6 +99,7 @@ const savedDestructiveBtnCls =
       >
         <template #action>
           <button
+            type="button"
             class="shrink-0 flex items-center gap-1 h-7 rounded-md text-muted-foreground text-xs font-medium uppercase tracking-[0.08em] hover:text-foreground transition-colors"
             @click="emit('back')"
           >
@@ -92,8 +112,18 @@ const savedDestructiveBtnCls =
 
     <div v-if="hasGenerated || hasSaved" class="flex-1 min-h-0 flex flex-col gap-4">
       <header class="shrink-0">
-        <div v-if="hasSaved" class="flex bg-muted border border-border rounded-lg p-[3px] gap-[2px]">
+        <div
+          v-if="hasSaved"
+          role="tablist"
+          aria-label="Route lists"
+          class="flex bg-muted border border-border rounded-lg p-[3px] gap-[2px]"
+          @keydown="onTabKey"
+        >
           <button
+            type="button"
+            role="tab"
+            :aria-selected="tab === 'generated'"
+            :tabindex="tab === 'generated' ? 0 : -1"
             :class="[tabBase, tab === 'generated' ? 'bg-card text-foreground shadow-[var(--shadow-card)]' : 'text-muted-foreground']"
             @click="tab = 'generated'"
             :disabled="!hasGenerated"
@@ -108,6 +138,10 @@ const savedDestructiveBtnCls =
             >{{ store.candidates.length }}</span>
           </button>
           <button
+            type="button"
+            role="tab"
+            :aria-selected="tab === 'saved'"
+            :tabindex="tab === 'saved' ? 0 : -1"
             :class="[tabBase, tab === 'saved' ? 'bg-card text-foreground shadow-[var(--shadow-card)]' : 'text-muted-foreground']"
             @click="tab = 'saved'"
           >
@@ -126,7 +160,12 @@ const savedDestructiveBtnCls =
       </header>
 
       <div ref="scroller" class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden max-md:overflow-visible">
-        <ul v-if="tab === 'generated'" class="flex flex-col gap-3">
+        <ul
+          v-if="tab === 'generated'"
+          role="tabpanel"
+          aria-label="Generated routes"
+          class="flex flex-col gap-3"
+        >
           <RouteCard
             v-for="(r, i) in store.candidates"
             :key="i"
@@ -145,7 +184,7 @@ const savedDestructiveBtnCls =
           </RouteCard>
         </ul>
 
-        <ul v-else class="flex flex-col gap-3">
+        <ul v-else role="tabpanel" aria-label="Saved routes" class="flex flex-col gap-3">
           <RouteCard
             v-for="entry in store.savedRoutes"
             :key="entry.id"
@@ -169,10 +208,20 @@ const savedDestructiveBtnCls =
               />
             </template>
             <template #actions>
-              <button :class="savedActionBtnCls" @click="startRename(entry)" title="Rename" aria-label="Rename">
+              <button
+                type="button"
+                :class="savedActionBtnCls"
+                :aria-label="`Rename ${entry.name}`"
+                @click="startRename(entry)"
+              >
                 <Icon name="edit" />
               </button>
-              <button :class="savedDestructiveBtnCls" @click="onDeleteSaved(entry.id)" title="Delete">
+              <button
+                type="button"
+                :class="savedDestructiveBtnCls"
+                :aria-label="`Delete ${entry.name}`"
+                @click="onDeleteSaved(entry.id)"
+              >
                 <Icon name="trash" />
               </button>
             </template>

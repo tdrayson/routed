@@ -53,7 +53,7 @@ const recenterBtnCls =
 
 <template>
   <!-- Shared-link single-instance view -->
-  <div
+  <main
     v-if="store.sharedView"
     class="flex flex-col w-full h-full overflow-hidden bg-background p-6 gap-6 max-md:px-4 max-md:pt-8 max-md:pb-4 max-md:gap-4"
   >
@@ -63,19 +63,19 @@ const recenterBtnCls =
     <div class="flex-1 min-h-0 relative overflow-hidden">
       <MapView />
       <button
+        type="button"
         :class="recenterBtnCls"
+        aria-label="Center map on route"
         @click="recenterRoute(store.selected)"
-        title="Center on route"
-        aria-label="Center on route"
       >
         <Icon name="recenter" />
       </button>
     </div>
     <AppFooter class="shrink-0" />
-  </div>
+  </main>
 
   <!-- Main app: sidebar + map -->
-  <div
+  <main
     v-else
     class="flex w-full h-full overflow-hidden bg-background p-6 gap-6 max-md:flex-col max-md:h-auto max-md:min-h-full max-md:overflow-visible max-md:px-4 max-md:pt-8 max-md:pb-0 max-md:gap-4"
   >
@@ -92,6 +92,7 @@ const recenterBtnCls =
           <template #action>
             <button
               v-if="hasRoutes"
+              type="button"
               class="shrink-0 flex items-center gap-1 h-7 rounded-md text-muted-foreground text-xs font-medium uppercase tracking-[0.08em] hover:text-foreground transition-colors"
               @click="goTo('routes')"
             >
@@ -109,6 +110,7 @@ const recenterBtnCls =
         >
           <template #action>
             <button
+              type="button"
               class="shrink-0 flex items-center gap-1 h-7 rounded-md text-muted-foreground text-xs font-medium uppercase tracking-[0.08em] hover:text-foreground transition-colors"
               @click="goTo('controls')"
             >
@@ -166,12 +168,14 @@ const recenterBtnCls =
     <Transition name="toast">
       <div
         v-if="store.shareToast"
+        role="status"
+        aria-live="polite"
         class="fixed bottom-6 right-6 px-4 py-2.5 bg-foreground text-background text-[13px] font-medium rounded-lg shadow-[var(--shadow-elevated)] whitespace-nowrap z-50"
       >
         {{ store.shareToast }}
       </div>
     </Transition>
-  </div>
+  </main>
 </template>
 
 <style scoped>

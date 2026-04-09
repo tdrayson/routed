@@ -85,6 +85,7 @@ const unitBtnCls = computed(() => (active) => [
       <input
         type="text"
         inputmode="decimal"
+        :aria-label="type === 'distance' ? 'Target distance' : 'Target time'"
         :value="display"
         @input="onInput"
         @beforeinput="onBeforeInput"
@@ -102,13 +103,26 @@ const unitBtnCls = computed(() => (active) => [
       </button>
     </div>
 
-    <div v-if="type === 'distance'" class="shrink-0 flex gap-1">
-      <button :class="unitBtnCls(unit === 'mi')" @click="$emit('update:unit', 'mi')">mi</button>
-      <button :class="unitBtnCls(unit === 'km')" @click="$emit('update:unit', 'km')">km</button>
+    <div v-if="type === 'distance'" role="radiogroup" aria-label="Distance unit" class="shrink-0 flex gap-1">
+      <button
+        type="button"
+        role="radio"
+        :aria-checked="unit === 'mi'"
+        :class="unitBtnCls(unit === 'mi')"
+        @click="$emit('update:unit', 'mi')"
+      >mi</button>
+      <button
+        type="button"
+        role="radio"
+        :aria-checked="unit === 'km'"
+        :class="unitBtnCls(unit === 'km')"
+        @click="$emit('update:unit', 'km')"
+      >km</button>
     </div>
     <div v-else class="shrink-0 relative">
       <select
         v-model="timeUnit"
+        aria-label="Time unit"
         class="h-10 w-[88px] pl-3.5 pr-8 bg-muted border border-border rounded-lg text-muted-foreground text-[13px] font-medium uppercase tracking-[0.08em] outline-none appearance-none cursor-pointer hover:text-foreground focus:border-primary"
       >
         <option value="min">mins</option>

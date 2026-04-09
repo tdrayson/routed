@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, useId } from 'vue'
 import { useRouteStore } from '../stores/route'
 import { reverseGeocode } from '../lib/mapbox'
 import LocationInput from './LocationInput.vue'
@@ -11,6 +11,12 @@ import Icon from './Icon.vue'
 const emit = defineEmits(['show-routes'])
 const store = useRouteStore()
 const hasRoutes = computed(() => store.candidates.length > 0 || store.savedRoutes.length > 0)
+
+const startLabelId = useId()
+const endLabelId = useId()
+const activityLabelId = useId()
+const tripTypeLabelId = useId()
+const targetLabelId = useId()
 
 async function onGenerate() {
   window.scrollTo?.({ top: 0, behavior: 'smooth' })
@@ -62,6 +68,7 @@ const iconBtnCls =
         <template #action>
           <button
             v-if="hasRoutes"
+            type="button"
             class="flex items-center gap-1 h-7 rounded-md text-muted-foreground text-xs font-medium uppercase tracking-[0.08em] hover:text-foreground transition-colors"
             @click="emit('show-routes')"
           >
@@ -72,62 +79,90 @@ const iconBtnCls =
       </PanelHeader>
     </header>
 
-    <div class="flex flex-col gap-6">
+    <form class="flex flex-col gap-6" @submit.prevent="onGenerate">
       <div class="flex flex-col gap-2.5">
-        <label :class="labelCls">Start</label>
+        <span :id="startLabelId" :class="labelCls">Start</span>
         <div class="flex gap-2 items-center">
           <LocationInput
             v-model="store.startLabel"
             placeholder="Start location"
+            label="Start location"
             @select="(p) => store.setStart(p.coords, p.label)"
           />
           <button
+            type="button"
             :class="[iconBtnCls, store.pickMode === 'start' && 'bg-primary/10 border-primary/40 text-primary']"
+            :aria-pressed="store.pickMode === 'start'"
+            aria-label="Pick start on map"
             @click="store.togglePickMode('start')"
-            title="Pick on map"
           >
-            <img src="/assets/marker.svg" alt="Pick" class="w-4 h-4 opacity-70" />
+            <img src="/assets/marker.svg" alt="" aria-hidden="true" class="w-4 h-4 opacity-70" />
           </button>
-          <button :class="iconBtnCls" @click="useCurrentLocation" title="Use current location">
-            <img src="/assets/gps.svg" alt="Current" class="w-4 h-4 opacity-70" />
+          <button
+            type="button"
+            :class="iconBtnCls"
+            aria-label="Use current location"
+            @click="useCurrentLocation"
+          >
+            <img src="/assets/gps.svg" alt="" aria-hidden="true" class="w-4 h-4 opacity-70" />
           </button>
         </div>
       </div>
 
       <div v-if="store.tripType === 'oneway'" class="flex flex-col gap-2.5">
-        <label :class="labelCls">End</label>
+        <span :id="endLabelId" :class="labelCls">End</span>
         <div class="flex gap-2 items-center">
           <LocationInput
             v-model="store.endLabel"
             placeholder="End location"
+            label="End location"
             @select="(p) => store.setEnd(p.coords, p.label)"
           />
           <button
+            type="button"
             :class="[iconBtnCls, store.pickMode === 'end' && 'bg-primary/10 border-primary/40 text-primary']"
+            :aria-pressed="store.pickMode === 'end'"
+            aria-label="Pick end on map"
             @click="store.togglePickMode('end')"
-            title="Pick on map"
           >
-            <img src="/assets/marker.svg" alt="Pick" class="w-4 h-4 opacity-70" />
+            <img src="/assets/marker.svg" alt="" aria-hidden="true" class="w-4 h-4 opacity-70" />
           </button>
-          <button :class="iconBtnCls" @click="store.swapLocations" title="Swap">
-            <img src="/assets/switch.svg" alt="Swap" class="w-4 h-4 opacity-70" />
+          <button
+            type="button"
+            :class="iconBtnCls"
+            aria-label="Swap start and end"
+            @click="store.swapLocations"
+          >
+            <img src="/assets/switch.svg" alt="" aria-hidden="true" class="w-4 h-4 opacity-70" />
           </button>
         </div>
       </div>
 
       <div class="flex flex-col gap-2.5">
-        <label :class="labelCls">Activity</label>
-        <SegmentedControl v-model="store.activity" :options="ACTIVITY_OPTIONS" />
+        <span :id="activityLabelId" :class="labelCls">Activity</span>
+        <SegmentedControl
+          v-model="store.activity"
+          :options="ACTIVITY_OPTIONS"
+          label="Activity"
+        />
       </div>
 
       <div class="flex flex-col gap-2.5">
-        <label :class="labelCls">Trip type</label>
-        <SegmentedControl v-model="store.tripType" :options="TRIP_TYPE_OPTIONS" />
+        <span :id="tripTypeLabelId" :class="labelCls">Trip type</span>
+        <SegmentedControl
+          v-model="store.tripType"
+          :options="TRIP_TYPE_OPTIONS"
+          label="Trip type"
+        />
       </div>
 
       <div class="flex flex-col gap-2.5">
-        <label :class="labelCls">Target</label>
-        <SegmentedControl v-model="store.targetType" :options="TARGET_TYPE_OPTIONS" />
+        <span :id="targetLabelId" :class="labelCls">Target</span>
+        <SegmentedControl
+          v-model="store.targetType"
+          :options="TARGET_TYPE_OPTIONS"
+          label="Target type"
+        />
       </div>
 
       <TargetInput
@@ -139,20 +174,22 @@ const iconBtnCls =
       />
 
       <button
+        type="submit"
         class="px-4 py-3.5 bg-primary text-card rounded-lg font-semibold text-sm mt-2 transition-colors duration-150 ease-out hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
         :disabled="store.loading"
-        @click="onGenerate"
+        :aria-busy="store.loading"
       >
         {{ store.loading ? 'Generating…' : 'Generate route' }}
       </button>
 
       <div
         v-if="store.error"
+        role="alert"
         class="px-3.5 py-3 bg-destructive/10 border border-destructive/25 rounded-lg text-destructive text-[13px]"
       >
         {{ store.error }}
       </div>
-    </div>
+    </form>
 
     <div
       v-if="store.shareToast"

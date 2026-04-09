@@ -1,10 +1,13 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount, useId } from 'vue'
 import { useRouteStore } from '../stores/route'
 import { useMap } from '../composables/useMap'
 import { useOutsideClick } from '../composables/useOutsideClick'
 import { downloadGpx, googleMapsUrl } from '../lib/gpx'
 import Icon from './Icon.vue'
+
+const savePanelId = useId()
+const sharePanelId = useId()
 
 const store = useRouteStore()
 const { recenterRoute } = useMap()
@@ -59,6 +62,14 @@ function clearRoute() {
 
 useOutsideClick('.map-actions', closePopups)
 
+function onKeydown(e) {
+  if (e.key === 'Escape' && (showSave.value || showShare.value)) {
+    closePopups()
+  }
+}
+onMounted(() => document.addEventListener('keydown', onKeydown))
+onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
+
 // Button style shared by every action icon.
 const iconBtnCls =
   'w-9 h-9 grid place-items-center rounded-md text-muted-foreground transition-all duration-150 hover:bg-primary/10 hover:text-primary'
@@ -70,43 +81,80 @@ const popupCls =
 
 <template>
   <div v-if="route" class="map-actions flex flex-col items-end gap-2">
-    <div :class="[popupCls, 'flex gap-1.5 p-1']">
-      <button :class="iconBtnCls" @click.stop="recenterRoute(route)" title="Center on route" aria-label="Center on route">
+    <div :class="[popupCls, 'flex gap-1.5 p-1']" role="toolbar" aria-label="Route actions">
+      <button
+        type="button"
+        :class="iconBtnCls"
+        aria-label="Center map on route"
+        @click.stop="recenterRoute(route)"
+      >
         <Icon name="recenter" />
       </button>
       <button
+        type="button"
         :class="[iconBtnCls, { 'bg-primary/10 text-primary': showSave }]"
+        aria-label="Save route"
+        aria-haspopup="dialog"
+        :aria-expanded="showSave"
+        :aria-controls="savePanelId"
         @click.stop="toggleSave"
-        title="Save route"
       >
         <Icon name="save" />
       </button>
       <button
+        type="button"
         :class="[iconBtnCls, { 'bg-primary/10 text-primary': showShare }]"
+        aria-label="Share route"
+        aria-haspopup="dialog"
+        :aria-expanded="showShare"
+        :aria-controls="sharePanelId"
         @click.stop="toggleShare"
-        title="Share route"
       >
         <Icon name="share" />
       </button>
-      <button :class="destructiveBtnCls" @click.stop="clearRoute" title="Clear route">
+      <button
+        type="button"
+        :class="destructiveBtnCls"
+        aria-label="Clear route"
+        @click.stop="clearRoute"
+      >
         <Icon name="close" />
       </button>
     </div>
 
-    <div v-if="showSave" :class="[popupCls, 'flex gap-2 p-2']" @click.stop>
+    <div
+      v-if="showSave"
+      :id="savePanelId"
+      role="dialog"
+      aria-label="Save route"
+      :class="[popupCls, 'flex gap-2 p-2']"
+      @click.stop
+    >
       <input
         v-model="saveName"
         type="text"
         placeholder="Route name"
+        aria-label="Route name"
         @keyup.enter="confirmSave"
         @keyup.escape="showSave = false"
         class="w-56 px-3 py-2 bg-background border border-border rounded-md text-[13px] text-foreground outline-none focus:border-primary"
         autofocus
       />
-      <button class="px-3.5 py-2 bg-primary text-card rounded-md text-xs font-semibold" @click="confirmSave">Save</button>
+      <button
+        type="button"
+        class="px-3.5 py-2 bg-primary text-card rounded-md text-xs font-semibold"
+        @click="confirmSave"
+      >Save</button>
     </div>
 
-    <div v-if="showShare" :class="[popupCls, 'flex flex-col gap-1 p-2 min-w-[260px]']" @click.stop>
+    <div
+      v-if="showShare"
+      :id="sharePanelId"
+      role="dialog"
+      aria-label="Share route"
+      :class="[popupCls, 'flex flex-col gap-1 p-2 min-w-[260px]']"
+      @click.stop
+    >
       <label class="flex flex-col gap-1 px-1 pt-1 pb-2">
         <span class="font-sans text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">Title</span>
         <input
@@ -119,6 +167,7 @@ const popupCls =
       </label>
       <div class="h-px bg-border mx-1 my-1" />
       <button
+        type="button"
         class="flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13px] text-foreground text-left hover:bg-primary/10 hover:text-primary"
         @click="copyLink"
       >
@@ -126,6 +175,7 @@ const popupCls =
         Copy link
       </button>
       <button
+        type="button"
         class="flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13px] text-foreground text-left hover:bg-primary/10 hover:text-primary"
         @click="openInMaps"
       >
@@ -133,6 +183,7 @@ const popupCls =
         Open in Google Maps
       </button>
       <button
+        type="button"
         class="flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13px] text-foreground text-left hover:bg-primary/10 hover:text-primary"
         @click="exportGpx"
       >

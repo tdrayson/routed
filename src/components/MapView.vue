@@ -108,7 +108,12 @@ watch(() => store.savedPreview, renderCurrent)
 </script>
 
 <template>
-  <div ref="container" class="map" />
+  <div
+    ref="container"
+    class="map"
+    role="region"
+    aria-label="Map"
+  />
 </template>
 
 <style scoped>
