@@ -154,8 +154,8 @@ const segBtnOnCls =
       <div class="flex flex-col gap-2.5">
         <label :class="labelCls">Activity</label>
         <div :class="segCls">
-          <button :class="store.activity === 'walking' ? segBtnOnCls : segBtnCls" @click="store.activity = 'walking'">Walk</button>
           <button :class="store.activity === 'running' ? segBtnOnCls : segBtnCls" @click="store.activity = 'running'">Run</button>
+          <button :class="store.activity === 'walking' ? segBtnOnCls : segBtnCls" @click="store.activity = 'walking'">Walk</button>
           <button :class="store.activity === 'cycling' ? segBtnOnCls : segBtnCls" @click="store.activity = 'cycling'">Cycle</button>
         </div>
       </div>

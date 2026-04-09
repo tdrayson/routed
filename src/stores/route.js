@@ -15,7 +15,7 @@ import {
 export const useRouteStore = defineStore('route', {
   state: () => ({
     // Settings
-    activity: 'walking', // walking | running | cycling
+    activity: 'running', // running | walking | cycling
     tripType: 'loop', // loop | outback | oneway
     targetType: 'distance', // distance | time
     targetValue: 5, // value in selected unit (or minutes if time)
