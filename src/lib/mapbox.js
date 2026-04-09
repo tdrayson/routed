@@ -11,12 +11,14 @@ export const MAPBOX_TOKEN = TOKEN
 
 export function profileFor(activity) {
   if (activity === 'cycling') return 'cycling'
+  // Running uses Mapbox's walking profile (pedestrian paths) but a faster pace.
   return 'walking'
 }
 
 // Average speeds (m/s) for seeding distance from a time target.
 export const SPEED_MS = {
   walking: 1.4,
+  running: 3.1,
   cycling: 5.0,
 }
 

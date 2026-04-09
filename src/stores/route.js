@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { generateRoutes, rankByCloseness } from '../composables/useRouteGenerator'
-import { toMeters } from '../lib/units'
+import { toMeters, formatDistance, formatDuration } from '../lib/units'
 import {
   buildShareUrl,
   readHashRoute,
@@ -8,13 +8,14 @@ import {
   listSaved,
   addSaved,
   removeSaved,
+  renameSaved,
   deserializeRoute,
 } from '../lib/share'
 
 export const useRouteStore = defineStore('route', {
   state: () => ({
     // Settings
-    activity: 'walking', // walking | cycling
+    activity: 'walking', // walking | running | cycling
     tripType: 'loop', // loop | outback | oneway
     targetType: 'distance', // distance | time
     targetValue: 5, // value in selected unit (or minutes if time)
@@ -37,7 +38,15 @@ export const useRouteStore = defineStore('route', {
 
     // Saved routes (loaded from localStorage on first access).
     savedRoutes: listSaved(),
+    // Transient preview of a saved route — drawn on the map without
+    // overwriting the current generated candidates.
+    savedPreview: null,
     shareToast: '',
+
+    // Single-instance "shared link" mode: when true, the app renders a
+    // read-only view of one route with no sidebar or search controls.
+    sharedView: false,
+    sharedTitle: '',
   }),
 
   getters: {
@@ -61,6 +70,7 @@ export const useRouteStore = defineStore('route', {
     },
     selectCandidate(i) {
       this.selectedIndex = i
+      this.savedPreview = null
     },
     togglePickMode(target) {
       this.pickMode = this.pickMode === target ? null : target
@@ -100,26 +110,43 @@ export const useRouteStore = defineStore('route', {
       const payload = readHashRoute()
       if (!payload) return false
       this.hydrateFromPayload(payload)
-      clearHash()
+      this.sharedView = true
+      this.sharedTitle = payload.title || this.suggestedName(this.candidates[0])
       return true
     },
 
-    async shareSelected() {
-      const route = this.selected
+    shareUrlFor(route, title) {
+      return route ? buildShareUrl(route, this, title) : ''
+    },
+
+    // Default name used for both save and share. Adapts to trip type and
+    // includes the end location for one-way trips.
+    suggestedName(route) {
+      if (!route) return 'My route'
+      const dist = formatDistance(route.distance, this.unit)
+      const from = this.startLabel ? this.startLabel.split(',')[0] : ''
+      if (this.tripType === 'oneway') {
+        const to = this.endLabel ? this.endLabel.split(',')[0] : ''
+        if (from && to) return `${dist} from ${from} to ${to}`
+        return `${dist} route${from ? ` from ${from}` : ''}`
+      }
+      const kind = this.tripType === 'loop' ? 'loop' : 'out & back'
+      return `${dist} ${kind}${from ? ` from ${from}` : ''}`
+    },
+
+    async copyShareLink(route, title) {
       if (!route) return
-      const url = buildShareUrl(route, this)
+      const url = buildShareUrl(route, this, title)
       try {
         await navigator.clipboard.writeText(url)
         this.flashToast('Link copied to clipboard')
       } catch {
-        // Fallback: drop the URL into the address bar so the user can copy it.
         location.hash = url.split('#')[1] || ''
         this.flashToast('Link is in your address bar')
       }
     },
 
-    saveSelected(name) {
-      const route = this.selected
+    saveRoute(route, name) {
       if (!route || !name) return
       const entry = addSaved(name.trim(), route, this)
       this.savedRoutes = [entry, ...this.savedRoutes.filter((e) => e.id !== entry.id)]
@@ -131,10 +158,28 @@ export const useRouteStore = defineStore('route', {
       this.savedRoutes = this.savedRoutes.filter((e) => e.id !== id)
     },
 
+    renameSaved(id, name) {
+      const trimmed = (name || '').trim()
+      if (!trimmed) return
+      this.savedRoutes = renameSaved(id, trimmed)
+    },
+
     loadSaved(id) {
       const entry = this.savedRoutes.find((e) => e.id === id)
       if (!entry) return
-      this.hydrateFromPayload(deserializeRoute(entry.data))
+      const payload = deserializeRoute(entry.data)
+      // Preview the saved route on the map without touching generated candidates.
+      this.savedPreview = {
+        id: entry.id,
+        label: entry.name || payload.label,
+        geometry: payload.geometry,
+        distance: payload.distance,
+        duration: payload.duration,
+        waypoints: [],
+      }
+    },
+    clearSavedPreview() {
+      this.savedPreview = null
     },
 
     flashToast(msg) {

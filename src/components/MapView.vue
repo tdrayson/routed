@@ -44,6 +44,10 @@ onMounted(() => {
       setStartMarker(store.start)
       flyTo(store.start)
     }
+    if (store.end) setEndMarker(store.end)
+    // Draw any route that was already hydrated before the map became ready
+    // (e.g. shared-link load).
+    renderCurrent()
     stop()
   })
 })
@@ -74,37 +78,33 @@ watch(
   },
 )
 
-// Compute viewport padding so the route fits clear of the floating panels.
-// Slightly heavier on the top-left where the overlay widgets sit.
-// Controls: 16 gap + 320 width = 336.  Selection (when shown): + 16 + 240 = 592.
+// Sidebar holds the controls now, so the map gets uniform padding.
 function fitPadding() {
-  const left = (store.candidates.length ? 608 : 352) + 24
-  return { top: 80, bottom: 48, left, right: 48 }
+  return { top: 60, bottom: 60, left: 60, right: 60 }
 }
 
-watch(
-  () => store.candidates,
-  (routes) => {
-    if (!isReady.value) return
-    if (!routes.length) {
-      clearRoutes()
-      return
-    }
-    setRoutes(routes, store.selectedIndex)
-    if (DEBUG) setWaypoints(routes[store.selectedIndex].waypoints || [])
-    fitToRoute(routes[store.selectedIndex].geometry, fitPadding())
-  },
-)
+function renderCurrent() {
+  if (!isReady.value) return
+  // Saved-route preview takes precedence over the generated list.
+  if (store.savedPreview) {
+    setRoutes([store.savedPreview], 0, store.savedPreview.tripType || store.tripType)
+    if (DEBUG) setWaypoints([])
+    fitToRoute(store.savedPreview.geometry, fitPadding())
+    return
+  }
+  if (!store.candidates.length || store.selectedIndex < 0) {
+    clearRoutes()
+    return
+  }
+  setRoutes(store.candidates, store.selectedIndex, store.tripType)
+  if (DEBUG) setWaypoints(store.candidates[store.selectedIndex].waypoints || [])
+  fitToRoute(store.candidates[store.selectedIndex].geometry, fitPadding())
+}
 
-watch(
-  () => store.selectedIndex,
-  (i) => {
-    if (!isReady.value || !store.candidates.length) return
-    setRoutes(store.candidates, i)
-    if (DEBUG) setWaypoints(store.candidates[i].waypoints || [])
-    fitToRoute(store.candidates[i].geometry, fitPadding())
-  },
-)
+watch(() => store.candidates, renderCurrent)
+watch(() => store.selectedIndex, renderCurrent)
+watch(() => store.savedPreview, renderCurrent)
+
 </script>
 
 <template>
@@ -112,5 +112,10 @@ watch(
 </template>
 
 <style scoped>
-.map { position: absolute; inset: 0; }
+.map {
+  width: 100%;
+  height: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+}
 </style>

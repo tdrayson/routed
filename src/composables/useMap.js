@@ -73,6 +73,59 @@ export function useMap() {
         filter: ['==', ['get', 'selected'], true],
       })
 
+      // Directional chevrons along the selected route.
+      m.addLayer({
+        id: 'routes-direction-selected',
+        type: 'symbol',
+        source: 'routes',
+        filter: ['==', ['get', 'selected'], true],
+        layout: {
+          'symbol-placement': 'line',
+          'symbol-spacing': 80,
+          'text-field': '>',
+          'text-font': ['DIN Offc Pro Bold', 'Arial Unicode MS Bold'],
+          'text-size': 22,
+          'text-keep-upright': false,
+          'text-allow-overlap': true,
+          'text-ignore-placement': true,
+        },
+        paint: {
+          'text-color': SELECTED_COLOR,
+          'text-halo-color': BORDER_COLOR,
+          'text-halo-width': 1.5,
+        },
+      })
+
+      // Reverse-direction chevrons for out-and-back routes, offset along
+      // the line so they sit beside (not on top of) the forward arrows.
+      m.addLayer({
+        id: 'routes-direction-selected-reverse',
+        type: 'symbol',
+        source: 'routes',
+        filter: [
+          'all',
+          ['==', ['get', 'selected'], true],
+          ['==', ['get', 'tripType'], 'outback'],
+        ],
+        layout: {
+          'symbol-placement': 'line',
+          'symbol-spacing': 80,
+          'text-field': '>',
+          'text-font': ['DIN Offc Pro Bold', 'Arial Unicode MS Bold'],
+          'text-size': 22,
+          'text-rotate': 180,
+          'text-offset': [0, 1.1],
+          'text-keep-upright': false,
+          'text-allow-overlap': true,
+          'text-ignore-placement': true,
+        },
+        paint: {
+          'text-color': SELECTED_COLOR,
+          'text-halo-color': BORDER_COLOR,
+          'text-halo-width': 1.5,
+        },
+      })
+
       // Debug waypoints (dev-only, toggled via setWaypoints()).
       m.addLayer({
         id: 'debug-waypoints-circle',
@@ -109,12 +162,15 @@ export function useMap() {
     })
   }
 
-  function setRoutes(routes, selectedIndex) {
+  function setRoutes(routes, selectedIndex, tripType) {
     if (!isReady.value) return
     const features = routes.map((r, i) => ({
       type: 'Feature',
       id: i,
-      properties: { selected: i === selectedIndex },
+      properties: {
+        selected: i === selectedIndex,
+        tripType: r.tripType || tripType || '',
+      },
       geometry: r.geometry,
     }))
     map.value.getSource('routes').setData({ type: 'FeatureCollection', features })
@@ -161,7 +217,11 @@ export function useMap() {
 
   function flyTo(coords, zoom = 14) {
     if (!isReady.value) return
-    map.value.flyTo({ center: coords, zoom, offset: [-180, 0] })
+    // On desktop the sidebar covers the left ~380px of the viewport, so we
+    // offset the center to keep the point visually centred over the map.
+    // On mobile the map is full-width, so no offset is needed.
+    const isDesktop = typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches
+    map.value.flyTo({ center: coords, zoom, offset: isDesktop ? [-180, 0] : [0, 0] })
   }
 
   function fitToRoute(geometry, padding = { top: 60, bottom: 60, left: 380, right: 60 }) {

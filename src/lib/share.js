@@ -22,10 +22,11 @@ const STORAGE_KEY = 'routed.saved'
 //   sl: start label
 //   el: end label
 
-export function serializeRoute(route, store) {
+export function serializeRoute(route, store, title) {
   return {
     v: 1,
     l: route.label,
+    n: title || '',
     a: store.activity,
     t: store.tripType,
     u: store.unit,
@@ -43,6 +44,7 @@ export function deserializeRoute(data) {
   if (!data || data.v !== 1) throw new Error('Unsupported share format')
   return {
     label: data.l || 'Shared route',
+    title: data.n || '',
     activity: data.a,
     tripType: data.t,
     unit: data.u,
@@ -58,8 +60,8 @@ export function deserializeRoute(data) {
 
 // ---------- URL hash ----------
 
-export function buildShareUrl(route, store) {
-  const json = JSON.stringify(serializeRoute(route, store))
+export function buildShareUrl(route, store, title) {
+  const json = JSON.stringify(serializeRoute(route, store, title))
   return `${location.origin}${location.pathname}#r=${b64urlEncode(json)}`
 }
 
@@ -107,6 +109,12 @@ export function addSaved(name, route, store) {
 
 export function removeSaved(id) {
   persistSaved(listSaved().filter((e) => e.id !== id))
+}
+
+export function renameSaved(id, name) {
+  const list = listSaved().map((e) => (e.id === id ? { ...e, name } : e))
+  persistSaved(list)
+  return list
 }
 
 // ---------- base64url ----------
