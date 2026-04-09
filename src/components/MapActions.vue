@@ -37,6 +37,14 @@ function openInMaps() {
   window.open(googleMapsUrl(route.value, store.activity), '_blank', 'noopener')
   showShare.value = false
 }
+function clearRoute() {
+  showSave.value = false
+  showShare.value = false
+  store.savedPreview = null
+  store.selectedIndex = -1
+  store.setStart(null, '')
+  store.setEnd(null, '')
+}
 function exportGpx() {
   downloadGpx(route.value, store.suggestedName(route.value), store.activity)
   showShare.value = false
@@ -53,8 +61,8 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 </script>
 
 <template>
-  <div v-if="route" class="map-actions flex flex-col items-end gap-2 md:absolute md:top-6 md:right-6 md:z-10">
-    <div class="flex gap-1.5 rounded-lg md:bg-card/95 md:backdrop-blur md:border md:border-border md:p-1 md:shadow-[var(--shadow-card)]">
+  <div v-if="route" class="map-actions flex flex-col items-end gap-2">
+    <div class="flex gap-1.5 bg-card/95 backdrop-blur border border-border rounded-lg p-1 shadow-[var(--shadow-card)]">
       <button
         class="w-9 h-9 grid place-items-center rounded-md text-muted-foreground transition-all duration-150 hover:bg-primary/10 hover:text-primary"
         :class="{ 'bg-primary/10 text-primary': showSave }"
@@ -70,6 +78,13 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
         title="Share route"
       >
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+      </button>
+      <button
+        class="w-9 h-9 grid place-items-center rounded-md text-muted-foreground transition-all duration-150 hover:bg-destructive/10 hover:text-destructive"
+        @click.stop="clearRoute"
+        title="Clear route"
+      >
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
 

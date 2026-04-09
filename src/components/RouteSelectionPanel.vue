@@ -57,6 +57,7 @@ const scroller = ref(null)
 function scrollToTop() {
   nextTick(() => {
     scroller.value?.scrollTo?.({ top: 0, behavior: 'smooth' })
+    window.scrollTo?.({ top: 0, behavior: 'smooth' })
   })
 }
 // Fresh generation → reset scroll.
@@ -75,7 +76,7 @@ const tabBase =
   <div class="w-full h-full flex flex-col text-foreground gap-8 max-md:h-auto">
     <div class="flex justify-between items-start gap-4 max-md:hidden">
       <div class="min-w-0">
-        <h1 class="font-serif text-[44px] leading-[1] text-foreground">Routes</h1>
+        <h1 class="font-serif text-[44px] leading-[1] text-foreground">Your Routes</h1>
         <p class="font-sans text-xs text-muted-foreground tracking-[0.04em] mt-1.5">Tap a route to preview it on the map, then save, share, or export the one you like.</p>
       </div>
       <button
@@ -86,8 +87,8 @@ const tabBase =
         Back
       </button>
     </div>
-    <div ref="scroller" v-if="hasGenerated || hasSaved" class="flex-1 overflow-y-auto overflow-x-hidden flex flex-col gap-4">
-    <header>
+    <div v-if="hasGenerated || hasSaved" class="flex-1 min-h-0 flex flex-col gap-4">
+    <header class="shrink-0">
       <div v-if="hasSaved" class="flex bg-muted border border-border rounded-lg p-[3px] gap-[2px]">
         <button
           :class="[tabBase, tab === 'generated' ? 'bg-card text-foreground shadow-[var(--shadow-card)]' : 'text-muted-foreground']"
@@ -121,6 +122,7 @@ const tabBase =
       </h2>
     </header>
 
+    <div ref="scroller" class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden max-md:overflow-visible">
     <ul v-if="tab === 'generated'" class="flex flex-col gap-3">
       <li
         v-for="(r, i) in store.candidates"
@@ -129,9 +131,9 @@ const tabBase =
         :class="{ '!border-primary bg-primary/5 shadow-[var(--shadow-card)]': i === store.selectedIndex }"
         @click="onSelectGenerated(i)"
       >
-        <div class="flex items-center gap-2.5 px-4 py-3.5 cursor-pointer">
+        <div class="flex gap-2.5 px-4 py-3.5 cursor-pointer">
           <div class="flex-1 min-w-0">
-            <div class="font-serif text-xl leading-tight mb-1 text-foreground truncate">{{ r.label }}</div>
+            <div class="font-serif text-xl leading-tight mb-1 text-foreground break-words">{{ r.label }}</div>
             <div
               class="font-mono text-[13px] flex gap-2 tabular-nums"
               :class="i === store.selectedIndex ? 'text-primary' : 'text-muted-foreground'"
@@ -155,7 +157,7 @@ const tabBase =
         class="route-card group bg-card border border-border rounded-xl transition-all duration-150 ease-out overflow-hidden hover:border-primary/30 hover:shadow-[var(--shadow-card)]"
         :class="{ '!border-primary bg-primary/5 shadow-[var(--shadow-card)]': store.savedPreview?.id === entry.id }"
       >
-        <div class="flex items-center gap-2.5 px-4 py-3.5 cursor-pointer" @click="editingSavedId !== entry.id && onLoadSaved(entry)">
+        <div class="flex gap-2.5 px-4 py-3.5 cursor-pointer" @click="editingSavedId !== entry.id && onLoadSaved(entry)">
           <div class="flex-1 min-w-0">
             <input
               v-if="editingSavedId === entry.id"
@@ -168,7 +170,7 @@ const tabBase =
               @blur="confirmRename(entry)"
               v-focus
             />
-            <div v-else class="font-serif text-xl leading-tight mb-1 text-foreground truncate">{{ entry.name }}</div>
+            <div v-else class="font-serif text-xl leading-tight mb-1 text-foreground break-words">{{ entry.name }}</div>
             <div
               class="font-mono text-[13px] flex gap-2 tabular-nums"
               :class="store.savedPreview?.id === entry.id ? 'text-primary' : 'text-muted-foreground'"
@@ -202,6 +204,7 @@ const tabBase =
         </div>
       </li>
     </ul>
+    </div>
     </div>
     <div v-if="!hasGenerated && !hasSaved" class="flex-1 grid place-items-center">
       <p class="font-serif text-lg text-muted-foreground text-center">No routes yet.<br/>Generate one from the previous step.</p>

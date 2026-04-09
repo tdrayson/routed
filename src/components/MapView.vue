@@ -87,16 +87,16 @@ function renderCurrent() {
   if (!isReady.value) return
   // Saved-route preview takes precedence over the generated list.
   if (store.savedPreview) {
-    setRoutes([store.savedPreview], 0)
+    setRoutes([store.savedPreview], 0, store.savedPreview.tripType || store.tripType)
     if (DEBUG) setWaypoints([])
     fitToRoute(store.savedPreview.geometry, fitPadding())
     return
   }
-  if (!store.candidates.length) {
+  if (!store.candidates.length || store.selectedIndex < 0) {
     clearRoutes()
     return
   }
-  setRoutes(store.candidates, store.selectedIndex)
+  setRoutes(store.candidates, store.selectedIndex, store.tripType)
   if (DEBUG) setWaypoints(store.candidates[store.selectedIndex].waypoints || [])
   fitToRoute(store.candidates[store.selectedIndex].geometry, fitPadding())
 }

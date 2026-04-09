@@ -48,33 +48,45 @@ watch(
     <MapView />
     <SharedRouteView />
   </div>
-  <div v-else class="flex w-full h-full overflow-hidden bg-background p-6 gap-6 max-md:flex-col max-md:h-auto max-md:min-h-full max-md:overflow-visible max-md:p-4 max-md:gap-4">
-    <header class="hidden max-md:flex justify-between items-start gap-4 max-md:order-1">
-      <div v-if="view === 'controls'" class="min-w-0">
-        <h1 class="font-serif text-[36px] leading-[1] text-foreground">Routed</h1>
-        <p class="font-sans text-xs text-muted-foreground tracking-[0.04em] mt-1.5">Fresh routes around your neighbourhood, so you never run the same loop twice.</p>
-      </div>
-      <div v-else class="flex items-start gap-3 min-w-0">
-        <button
-          class="shrink-0 mt-1 w-9 h-9 grid place-items-center rounded-lg border border-border text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/10 transition-colors"
-          @click="goTo('controls')"
-          aria-label="Back"
+  <div v-else class="flex w-full h-full overflow-hidden bg-background p-6 gap-6 max-md:flex-col max-md:h-auto max-md:min-h-full max-md:overflow-visible max-md:px-4 max-md:pt-8 max-md:pb-0 max-md:gap-4">
+    <header class="hidden max-md:block max-md:order-1">
+      <Transition :name="transitionName" mode="out-in">
+        <div
+          v-if="view === 'controls'"
+          key="controls"
+          class="flex justify-between items-start gap-4"
         >
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-        </button>
-        <div class="min-w-0">
-          <h1 class="font-serif text-[36px] leading-[1] text-foreground truncate">Routes</h1>
-          <p class="font-sans text-xs text-muted-foreground tracking-[0.04em] mt-1.5">Tap a route to preview it on the map, then save, share, or export the one you like.</p>
+          <div class="min-w-0">
+            <h1 class="font-serif text-[36px] leading-[1] text-foreground">Routed</h1>
+            <p class="font-sans text-xs text-muted-foreground tracking-[0.04em] mt-1.5">Fresh routes around your neighbourhood, so you never run the same loop twice.</p>
+          </div>
+          <button
+            v-if="hasRoutes"
+            class="shrink-0 flex items-center gap-1 h-7 rounded-md text-muted-foreground text-xs font-medium uppercase tracking-[0.08em] hover:text-foreground transition-colors"
+            @click="goTo('routes')"
+          >
+            Routes
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
         </div>
-      </div>
-      <button
-        v-if="hasRoutes && view === 'controls'"
-        class="shrink-0 flex items-center gap-1 h-7 rounded-md text-muted-foreground text-xs font-medium uppercase tracking-[0.08em] hover:text-foreground transition-colors"
-        @click="goTo('routes')"
-      >
-        Routes
-        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-      </button>
+        <div
+          v-else
+          key="routes"
+          class="flex justify-between items-start gap-4 min-w-0"
+        >
+          <div class="min-w-0">
+            <h1 class="font-serif text-[36px] leading-[1] text-foreground truncate">Your Routes</h1>
+            <p class="font-sans text-xs text-muted-foreground tracking-[0.04em] mt-1.5">Tap a route to preview it on the map, then save, share, or export the one you like.</p>
+          </div>
+          <button
+            class="shrink-0 flex items-center gap-1 h-7 rounded-md text-muted-foreground text-xs font-medium uppercase tracking-[0.08em] hover:text-foreground transition-colors"
+            @click="goTo('controls')"
+          >
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            Back
+          </button>
+        </div>
+      </Transition>
     </header>
     <aside
       class="flex-none w-[380px] h-full flex flex-col overflow-hidden max-md:w-full max-md:h-auto max-md:order-3 max-md:overflow-visible"
@@ -91,6 +103,26 @@ watch(
           @back="goTo('controls')"
         />
       </Transition>
+      <footer class="shrink-0 pt-8 flex items-center justify-between max-md:order-4 max-md:pb-4">
+        <p class="text-[10px] uppercase tracking-widest text-muted-foreground">
+          Routed · Built by
+          <a
+            href="https://taylordrayson.com"
+            target="_blank"
+            rel="noopener"
+            class="text-muted-foreground hover:text-foreground transition-colors"
+          >Taylor Drayson</a>
+        </p>
+        <a
+          href="https://github.com/tdrayson/routed"
+          target="_blank"
+          rel="noopener"
+          aria-label="Open GitHub repo (opens in a new tab)"
+          class="text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <svg class="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        </a>
+      </footer>
     </aside>
     <div class="flex-1 min-w-0 h-full relative max-md:flex-none max-md:h-auto max-md:order-2 max-md:border max-md:border-border max-md:rounded-2xl max-md:overflow-hidden max-md:bg-card max-md:shadow-[var(--shadow-card)]">
       <div class="h-full overflow-hidden max-md:h-[42vh] max-md:rounded-none">
@@ -113,7 +145,7 @@ watch(
             <span>{{ formatDuration(activeRoute.duration) }}</span>
           </div>
         </div>
-        <div class="md:pointer-events-auto max-md:self-end">
+        <div class="md:pointer-events-auto max-md:absolute max-md:top-3 max-md:right-3 max-md:z-10">
           <MapActions />
         </div>
       </div>

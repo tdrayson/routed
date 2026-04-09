@@ -59,6 +59,11 @@ watch(
 )
 watch(timeUnit, () => (targetDisplay.value = formatTarget(store.targetValue)))
 
+async function onGenerate() {
+  window.scrollTo?.({ top: 0, behavior: 'smooth' })
+  await store.generate()
+}
+
 async function useCurrentLocation() {
   if (!navigator.geolocation) {
     store.error = 'Geolocation not available'
@@ -239,7 +244,7 @@ const segBtnOnCls =
       <button
         class="px-4 py-3.5 bg-primary text-card rounded-lg font-semibold text-sm mt-2 transition-colors duration-150 ease-out hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
         :disabled="store.loading"
-        @click="store.generate"
+        @click="onGenerate"
       >
         {{ store.loading ? 'Generating…' : 'Generate route' }}
       </button>
