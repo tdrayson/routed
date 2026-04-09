@@ -1,10 +1,17 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouteStore } from '../stores/route'
+import { useMap } from '../composables/useMap'
 import { formatDistance, formatDuration } from '../lib/units'
 
 const store = useRouteStore()
+const { fitToRoute } = useMap()
 const route = computed(() => store.selected)
+
+function recenter() {
+  if (!route.value?.geometry) return
+  fitToRoute(route.value.geometry, { top: 60, bottom: 60, left: 60, right: 60 })
+}
 
 const activityLabel = computed(() => {
   switch (store.activity) {
@@ -16,11 +23,11 @@ const activityLabel = computed(() => {
 </script>
 
 <template>
-  <div v-if="route" class="absolute top-6 left-6 z-10 max-w-[420px] bg-card/95 backdrop-blur border border-border rounded-xl shadow-[var(--shadow-card)] px-5 py-4">
+  <div v-if="route" class="min-w-0">
     <div class="font-sans text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground mb-1.5">
       {{ activityLabel }}
     </div>
-    <h1 class="font-serif text-[28px] leading-[1.1] text-foreground mb-3">
+    <h1 class="font-serif text-[36px] leading-[1] text-foreground mb-3 break-words">
       {{ store.sharedTitle || route.label }}
     </h1>
     <div class="font-mono text-sm text-muted-foreground flex gap-2 tabular-nums">

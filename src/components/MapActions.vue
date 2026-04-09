@@ -2,9 +2,16 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouteStore } from '../stores/route'
 import { downloadGpx, googleMapsUrl } from '../lib/gpx'
+import { useMap } from '../composables/useMap'
 
 const store = useRouteStore()
+const { fitToRoute } = useMap()
 const route = computed(() => store.savedPreview || store.selected)
+
+function recenter() {
+  if (!route.value?.geometry) return
+  fitToRoute(route.value.geometry, { top: 60, bottom: 60, left: 60, right: 60 })
+}
 
 const showSave = ref(false)
 const showShare = ref(false)
@@ -63,6 +70,14 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 <template>
   <div v-if="route" class="map-actions flex flex-col items-end gap-2">
     <div class="flex gap-1.5 bg-card/95 backdrop-blur border border-border rounded-lg p-1 shadow-[var(--shadow-card)]">
+      <button
+        class="w-9 h-9 grid place-items-center rounded-md text-muted-foreground transition-all duration-150 hover:bg-primary/10 hover:text-primary"
+        @click.stop="recenter"
+        title="Center on route"
+        aria-label="Center on route"
+      >
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>
+      </button>
       <button
         class="w-9 h-9 grid place-items-center rounded-md text-muted-foreground transition-all duration-150 hover:bg-primary/10 hover:text-primary"
         :class="{ 'bg-primary/10 text-primary': showSave }"
