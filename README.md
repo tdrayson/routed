@@ -1,12 +1,12 @@
+![Routed](./public/og-image.png)
+
 # Routed
 
 Fresh routes around your neighbourhood, so you never run the same loop twice.
 
-![Routed](./public/og-image.png)
-
 Routed generates smart running, walking and cycling routes from a start point and a target distance or time. Pick a loop, an out-and-back, or a one-way trip — it'll plan a path you haven't worn out yet, preview it on the map, and let you save, share, or export to GPX.
 
-**Live:** <https://tdrayson.github.io/routed/>
+**[Live Demo](https://tdrayson.github.io/routed/)**
 
 ## Features
 
