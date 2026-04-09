@@ -68,21 +68,28 @@ function onKey(e) {
 </script>
 
 <template>
-  <div class="loc-input">
+  <div class="relative w-full">
     <input
       type="text"
       :value="query"
       :placeholder="placeholder"
+      class="w-full h-10 px-3 bg-muted border border-border rounded-lg text-foreground outline-none transition-colors duration-150 placeholder:text-muted-foreground focus:bg-card focus:border-primary"
       @input="onInput"
       @keydown="onKey"
       @focus="open = results.length > 0"
       @blur="setTimeout(() => (open = false), 150)"
     />
-    <ul v-if="open" class="results">
+    <ul
+      v-if="open"
+      class="absolute top-[calc(100%+4px)] left-0 right-0 bg-card border border-border rounded-lg max-h-60 overflow-y-auto z-10 shadow-[var(--shadow-elevated)]"
+    >
       <li
         v-for="(r, i) in results"
         :key="r.id || i"
-        :class="{ active: i === highlight }"
+        :class="[
+          'px-3 py-2.5 cursor-pointer text-[13px] text-foreground border-b border-border last:border-b-0 hover:bg-primary/10 hover:text-primary',
+          i === highlight && 'bg-primary/10 text-primary'
+        ]"
         @mousedown.prevent="pick(r)"
       >
         {{ r.place_name }}
@@ -90,42 +97,3 @@ function onKey(e) {
     </ul>
   </div>
 </template>
-
-<style scoped>
-.loc-input { position: relative; width: 100%; }
-input {
-  width: 100%;
-  padding: 10px 12px;
-  background: var(--input-bg);
-  border: 1px solid transparent;
-  border-radius: 8px;
-  color: var(--text);
-  outline: none;
-  transition: background 0.15s, border-color 0.15s;
-}
-input:focus { background: var(--input-bg-focus); border-color: var(--primary); }
-.results {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0; right: 0;
-  background: var(--panel);
-  backdrop-filter: blur(16px);
-  border: 1px solid var(--panel-border);
-  border-radius: 8px;
-  max-height: 240px;
-  overflow-y: auto;
-  z-index: 10;
-  box-shadow: var(--shadow);
-}
-.results li {
-  padding: 9px 12px;
-  cursor: pointer;
-  font-size: 13px;
-  border-bottom: 1px solid var(--panel-border);
-}
-.results li:last-child { border-bottom: 0; }
-.results li:hover, .results li.active {
-  background: rgba(225, 29, 72, 0.1);
-  color: var(--primary-dim);
-}
-</style>

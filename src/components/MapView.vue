@@ -44,6 +44,10 @@ onMounted(() => {
       setStartMarker(store.start)
       flyTo(store.start)
     }
+    if (store.end) setEndMarker(store.end)
+    // Draw any route that was already hydrated before the map became ready
+    // (e.g. shared-link load).
+    renderCurrent()
     stop()
   })
 })
@@ -79,29 +83,27 @@ function fitPadding() {
   return { top: 60, bottom: 60, left: 60, right: 60 }
 }
 
-watch(
-  () => store.candidates,
-  (routes) => {
-    if (!isReady.value) return
-    if (!routes.length) {
-      clearRoutes()
-      return
-    }
-    setRoutes(routes, store.selectedIndex)
-    if (DEBUG) setWaypoints(routes[store.selectedIndex].waypoints || [])
-    fitToRoute(routes[store.selectedIndex].geometry, fitPadding())
-  },
-)
+function renderCurrent() {
+  if (!isReady.value) return
+  // Saved-route preview takes precedence over the generated list.
+  if (store.savedPreview) {
+    setRoutes([store.savedPreview], 0)
+    if (DEBUG) setWaypoints([])
+    fitToRoute(store.savedPreview.geometry, fitPadding())
+    return
+  }
+  if (!store.candidates.length) {
+    clearRoutes()
+    return
+  }
+  setRoutes(store.candidates, store.selectedIndex)
+  if (DEBUG) setWaypoints(store.candidates[store.selectedIndex].waypoints || [])
+  fitToRoute(store.candidates[store.selectedIndex].geometry, fitPadding())
+}
 
-watch(
-  () => store.selectedIndex,
-  (i) => {
-    if (!isReady.value || !store.candidates.length) return
-    setRoutes(store.candidates, i)
-    if (DEBUG) setWaypoints(store.candidates[i].waypoints || [])
-    fitToRoute(store.candidates[i].geometry, fitPadding())
-  },
-)
+watch(() => store.candidates, renderCurrent)
+watch(() => store.selectedIndex, renderCurrent)
+watch(() => store.savedPreview, renderCurrent)
 
 </script>
 
@@ -110,5 +112,10 @@ watch(
 </template>
 
 <style scoped>
-.map { position: absolute; inset: 0; width: 100%; height: 100%; }
+.map {
+  width: 100%;
+  height: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+}
 </style>

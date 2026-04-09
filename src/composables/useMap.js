@@ -161,7 +161,11 @@ export function useMap() {
 
   function flyTo(coords, zoom = 14) {
     if (!isReady.value) return
-    map.value.flyTo({ center: coords, zoom, offset: [-180, 0] })
+    // On desktop the sidebar covers the left ~380px of the viewport, so we
+    // offset the center to keep the point visually centred over the map.
+    // On mobile the map is full-width, so no offset is needed.
+    const isDesktop = typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches
+    map.value.flyTo({ center: coords, zoom, offset: isDesktop ? [-180, 0] : [0, 0] })
   }
 
   function fitToRoute(geometry, padding = { top: 60, bottom: 60, left: 380, right: 60 }) {
