@@ -239,6 +239,12 @@ export function useMap() {
     map.value.fitBounds(bounds, { padding, duration: 800 })
   }
 
+  // Convenience: recenter on a route object with symmetric padding.
+  function recenterRoute(route, padding = { top: 60, bottom: 60, left: 60, right: 60 }) {
+    if (!route?.geometry) return
+    fitToRoute(route.geometry, padding)
+  }
+
   function onSelect(handler) {
     if (!map.value) return
     map.value.on('routed:select', (e) => handler(e.id))
@@ -260,6 +266,7 @@ export function useMap() {
     setEndMarker,
     flyTo,
     fitToRoute,
+    recenterRoute,
     onSelect,
     onClick,
   }
