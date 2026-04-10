@@ -16,6 +16,7 @@ import {
   midpoint,
   haversine,
   overlapStats,
+  trimSpurCoordinates,
 } from '../lib/geometry';
 
 // Drop routes with retraced segments ("spur" / dead-end appendages or
@@ -28,7 +29,25 @@ import {
 // segment a user would notice and complain about.
 const MAX_DOUBLED_METERS = 50;
 function dropSpurs(routes) {
-  const scored = routes.map((r) => {
+  // First pass: surgically trim detectable spurs from each route's geometry
+  // so an otherwise-good route isn't discarded for a tiny dead-end appendage.
+  const trimmed = routes.map((r) => {
+    const { coordinates, trimmedMeters } = trimSpurCoordinates(
+      r.geometry.coordinates,
+    );
+    if (trimmedMeters === 0) return r;
+    const kept = Math.max(0, r.distance - trimmedMeters);
+    const ratio = r.distance > 0 ? kept / r.distance : 1;
+    return {
+      ...r,
+      geometry: { ...r.geometry, coordinates },
+      distance: kept,
+      duration: r.duration * ratio,
+    };
+  });
+
+  // Second pass: score any remaining overlap on the trimmed geometry.
+  const scored = trimmed.map((r) => {
     const doubled = overlapStats(r.geometry.coordinates).doubledMeters;
     return { route: { ...r, doubledMeters: doubled }, doubled };
   });

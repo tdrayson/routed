@@ -120,6 +120,99 @@ export function overlapStats(coordinates) {
   return { ratio: total > 0 ? doubledMeters / total : 0, doubledMeters }
 }
 
+// Trim spur segments (out-and-back dead-ends) from a coordinate array.
+//
+// Uses the same proximity-based overlap detection as overlapStats, then groups
+// the flagged segments into contiguous spur regions and splices each one out,
+// keeping a single junction point where the spur branched off the main route.
+//
+// Returns { coordinates, trimmedMeters }.
+export function trimSpurCoordinates(coordinates) {
+  const n = coordinates?.length || 0
+  if (n < 6) return { coordinates: coordinates || [], trimmedMeters: 0 }
+
+  const PROXIMITY_M = 8
+  const MIN_GAP = 3
+  const MAX_TIP_GAP = 5      // unflagged segments allowed at the spur turnaround
+  const JUNCTION_PROXIMITY_M = 40 // entry/exit must be within this distance
+
+  const segLen = new Array(n - 1)
+  for (let i = 0; i < n - 1; i++) {
+    segLen[i] = haversine(coordinates[i], coordinates[i + 1])
+  }
+
+  const flagged = new Uint8Array(n - 1)
+  for (let i = 0; i < n - 1; i++) {
+    const a1 = coordinates[i]
+    const a2 = coordinates[i + 1]
+    for (let j = i + MIN_GAP; j < n - 1; j++) {
+      const b1 = coordinates[j]
+      const b2 = coordinates[j + 1]
+      const parallel =
+        haversine(a1, b1) < PROXIMITY_M && haversine(a2, b2) < PROXIMITY_M
+      const antiParallel =
+        haversine(a1, b2) < PROXIMITY_M && haversine(a2, b1) < PROXIMITY_M
+      if (parallel || antiParallel) {
+        flagged[i] = 1
+        flagged[j] = 1
+      }
+    }
+  }
+
+  // Group flagged segments into contiguous runs, allowing small gaps for the
+  // unflagged segments at the spur tip (turnaround point).
+  const groups = []
+  let groupStart = -1
+  let lastFlagged = -1
+  for (let i = 0; i < n - 1; i++) {
+    if (flagged[i]) {
+      if (groupStart === -1) {
+        groupStart = i
+      } else if (i - lastFlagged > MAX_TIP_GAP) {
+        groups.push([groupStart, lastFlagged])
+        groupStart = i
+      }
+      lastFlagged = i
+    }
+  }
+  if (groupStart !== -1) {
+    groups.push([groupStart, lastFlagged])
+  }
+
+  if (groups.length === 0) return { coordinates, trimmedMeters: 0 }
+
+  const result = [...coordinates]
+  let totalTrimmed = 0
+
+  // Process in reverse so splicing high indices doesn't shift lower ones.
+  for (let g = groups.length - 1; g >= 0; g--) {
+    const [gStart, gEnd] = groups[g]
+    const exitIdx = gEnd + 1
+
+    // Don't trim if the spur touches the very last coordinate.
+    if (exitIdx >= n - 1) continue
+
+    const entryPoint = coordinates[gStart]
+    const exitPoint = coordinates[exitIdx]
+
+    // Confirm entry and exit are close — it really is a spur, not
+    // coincidental road reuse in a different part of the route.
+    if (haversine(entryPoint, exitPoint) > JUNCTION_PROXIMITY_M) continue
+
+    let spurDist = 0
+    for (let i = gStart; i <= gEnd; i++) {
+      spurDist += segLen[i]
+    }
+    totalTrimmed += spurDist
+
+    // Splice out the spur: keep the entry point, drop everything through the
+    // exit point (entry ≈ exit so we only need one).
+    result.splice(gStart + 1, exitIdx - gStart)
+  }
+
+  return { coordinates: result, trimmedMeters: totalTrimmed }
+}
+
 // Backward-compat alias.
 export function overlapRatio(coordinates) {
   return overlapStats(coordinates).ratio
